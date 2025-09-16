@@ -72,9 +72,51 @@ export default function DashboardPage() {
   }, [financialData]);
 
   useEffect(() => {
-    if (!financialData?.workStartTime || !financialData?.workEndTime || !financialData?.workDays) {
+    if (!financialData || !financialData.workStartTime || !financialData.workEndTime || !financialData.workDays) {
       return;
     }
+
+    const calculateInitialState = () => {
+      const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
+      const now = new Date();
+      const start = parseTimeToDate(financialData.workStartTime);
+      let end = parseTimeToDate(financialData.workEndTime);
+
+      if (end < start) { // overnight shift
+        end.setDate(end.getDate() + 1);
+        if (now < start) {
+          now.setDate(now.getDate() + 1);
+        }
+      }
+
+      let progress = 0;
+      if (now >= start && isWorking) {
+        if (now > end) {
+          progress = 100;
+        } else {
+          const totalDuration = end.getTime() - start.getTime();
+          const elapsedDuration = now.getTime() - start.getTime();
+          progress = (elapsedDuration / totalDuration) * 100;
+        }
+      }
+
+      setWorkdayProgress(progress > 100 ? 100 : progress);
+
+      if (isWorking) {
+        const totalWorkdaySeconds = (end.getTime() - start.getTime()) / 1000;
+        const elapsedSeconds = (now.getTime() - start.getTime()) / 1000;
+        if (elapsedSeconds > 0 && elapsedSeconds <= totalWorkdaySeconds) {
+            setEarnings(elapsedSeconds * earningsPerSecond);
+        } else if (elapsedSeconds > totalWorkdaySeconds) {
+            setEarnings(totalWorkdaySeconds * earningsPerSecond);
+        } else {
+            setEarnings(0);
+        }
+      }
+    };
+
+    calculateInitialState(); // Calculate initial state on load
+
     const timer = setInterval(() => {
       const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
       if (financialData && isWorking) {
@@ -106,10 +148,13 @@ export default function DashboardPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [earningsPerSecond, financialData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [financialData]);
 
   const handleSetupComplete = (data: FinancialData) => {
     setFinancialData(data);
+    setEarnings(0);
+    setWorkdayProgress(0);
   };
   
   const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'date'>) => {
@@ -169,7 +214,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen w-full flex-col">
       <Header />
       <main className="flex flex-1 flex-col items-center bg-secondary/50 p-4 sm:p-6 md:p-8">
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-4xl space-y-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
@@ -177,27 +222,32 @@ export default function DashboardPage() {
             </div>
              <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="md:col-span-2 text-center">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
-                   <Banknote className="h-5 w-5" />
-                   Ganhos em Tempo Real
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <p className="text-5xl font-bold tracking-tighter text-primary">
-                    {formatRealTimeCurrency(earnings)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                    {isWorking ? 
-                      `Ganhando agora.` :
-                      `Fora do expediente. O contador está pausado.`
-                    }
-                </p>
-              </CardContent>
-            </Card>
+          
+           <div className="grid grid-cols-1">
+              <div className="flex justify-center">
+                 <Card className="w-full max-w-lg text-center">
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                        <Banknote className="h-5 w-5" />
+                        Ganhos em Tempo Real
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-6">
+                        <p className="text-5xl font-bold tracking-tighter text-primary">
+                            {formatRealTimeCurrency(earnings)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                            {isWorking ? 
+                            `Ganhando agora.` :
+                            `Fora do expediente. O contador está pausado.`
+                            }
+                        </p>
+                    </CardContent>
+                </Card>
+              </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
