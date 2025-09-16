@@ -2,6 +2,8 @@
 import React from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 const Header = () => {
   const router = useRouter();
@@ -10,9 +12,7 @@ const Header = () => {
   const [, setUserName] = useLocalStorage('userName', null);
 
   const handleLogoClick = () => {
-    // Potentially reset or navigate, for now just a placeholder
-    // Or maybe we want to go to the dashboard if we are somewhere else.
-    // Since there's only one page, this can be empty or link to '/'
+    router.push('/');
   };
 
   return (
@@ -38,7 +38,9 @@ const Header = () => {
               CLT AI
             </h1>
           </div>
-          {/* Logout button was here */}
+          <Link href="/login" passHref>
+            <Button variant="outline">Login</Button>
+          </Link>
         </div>
     </header>
   );
