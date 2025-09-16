@@ -30,7 +30,7 @@ export default function Home() {
               <line x1="12" x2="12" y1="2" y2="22" />
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
-          <h1 className="text-2xl font-bold text-foreground">Visão Financeira</h1>
+          <h1 className="text-2xl font-bold text-foreground">Finanças AI</h1>
         </div>
         <p className="text-muted-foreground">Redirecionando para o login...</p>
         <div className="mt-4 w-full max-w-sm space-y-4">
