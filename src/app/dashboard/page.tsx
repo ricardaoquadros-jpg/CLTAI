@@ -271,7 +271,7 @@ export default function DashboardPage() {
                      </div>
                      <Progress value={workdayProgress} className="w-full h-3" />
                      <p className="text-center text-lg font-bold text-foreground">
-                        {workdayProgress.toFixed(2)}%
+                        {workdayProgress.toFixed(3)}%
                      </p>
                    </div>
                 </CardContent>
