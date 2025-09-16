@@ -28,7 +28,7 @@ import { CalendarDays, Clock } from 'lucide-react';
 
 const formSchema = z.object({
   incomeAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
-  incomeFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly']),
+  incomeFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
   workStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
@@ -99,23 +99,6 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       }
     });
   };
-  
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // We can derive the workdays from the selected dates to be more accurate
-    const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
-
-    onSetupComplete({
-      income: {
-        amount: values.incomeAmount,
-        frequency: values.incomeFrequency as FinancialData['income']['frequency'],
-      },
-      bankBalance: values.bankBalance,
-      investments: values.investments,
-      workStartTime: values.workStartTime,
-      workEndTime: values.workEndTime,
-      workDays: finalWorkDays,
-    });
-  }
 
   const totalWorkHours = useMemo(() => {
     if (!workStartTime || !workEndTime || selectedDates.length === 0) {
@@ -137,6 +120,25 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       return 0;
     }
   }, [workStartTime, workEndTime, selectedDates]);
+  
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // We can derive the workdays from the selected dates to be more accurate
+    const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
+
+    onSetupComplete({
+      income: {
+        amount: values.incomeAmount,
+        frequency: values.incomeFrequency as FinancialData['income']['frequency'],
+      },
+      bankBalance: values.bankBalance,
+      investments: values.investments,
+      workStartTime: values.workStartTime,
+      workEndTime: values.workEndTime,
+      workDays: finalWorkDays,
+      totalWorkHoursInMonth: totalWorkHours,
+    });
+  }
+
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -188,6 +190,12 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                              <div>
                                 <p>Mensal (Dias Úteis)</p>
                                 <p className="text-xs text-muted-foreground">O salário é dividido pelos dias de trabalho no mês.</p>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="monthly_work_hours">
+                             <div>
+                                <p>Mensal (Horas Trabalhadas)</p>
+                                <p className="text-xs text-muted-foreground">O salário é dividido pelo total de horas de trabalho.</p>
                             </div>
                           </SelectItem>
                           <SelectItem value="daily">

@@ -11,14 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { parse } from 'date-fns';
 
 
-const SECONDS_IN = {
-  hourly: 3600,
-  daily: 86400,
-  monthly_business_days: 22 * 8 * 3600,
-  monthly: 30.44 * 24 * 3600,
-};
+const SECONDS_IN_HOUR = 3600;
+const SECONDS_IN_DAY = 86400;
+const AVG_DAYS_IN_MONTH = 30.44;
+const AVG_BUSINESS_DAYS_IN_MONTH = 22;
 
 function parseTimeToDate(timeStr: string): Date {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -68,7 +67,31 @@ export default function DashboardPage() {
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.income) return 0;
     const { amount, frequency } = financialData.income;
-    return amount / SECONDS_IN[frequency];
+    const { workStartTime, workEndTime, workDays } = financialData;
+
+    try {
+        const start = parse(workStartTime, 'HH:mm', new Date());
+        let end = parse(workEndTime, 'HH:mm', new Date());
+        if (end < start) { end.setDate(end.getDate() + 1); }
+        const hoursPerDay = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+        switch (frequency) {
+            case 'hourly':
+                return amount / SECONDS_IN_HOUR;
+            case 'daily':
+                return amount / (hoursPerDay * SECONDS_IN_HOUR);
+            case 'monthly_business_days':
+                 return amount / (AVG_BUSINESS_DAYS_IN_MONTH * hoursPerDay * SECONDS_IN_HOUR);
+            case 'monthly_work_hours':
+                if (!financialData.totalWorkHoursInMonth) return 0;
+                return amount / (financialData.totalWorkHoursInMonth * SECONDS_IN_HOUR);
+            case 'monthly':
+            default:
+                return amount / (AVG_DAYS_IN_MONTH * SECONDS_IN_DAY);
+        }
+    } catch (e) {
+        return 0;
+    }
   }, [financialData]);
 
   useEffect(() => {
@@ -223,28 +246,26 @@ export default function DashboardPage() {
              <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
           </div>
           
-           <div className="grid grid-cols-1">
-              <div className="flex justify-center">
-                 <Card className="w-full max-w-lg text-center">
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
-                        <Banknote className="h-5 w-5" />
-                        Ganhos em Tempo Real
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-6">
-                        <p className="text-5xl font-bold tracking-tighter text-primary">
-                            {formatRealTimeCurrency(earnings)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                            {isWorking ? 
-                            `Ganhando agora.` :
-                            `Fora do expediente. O contador está pausado.`
-                            }
-                        </p>
-                    </CardContent>
-                </Card>
-              </div>
+           <div className="grid grid-cols-1 justify-items-center">
+              <Card className="w-full max-w-lg text-center">
+                  <CardHeader>
+                      <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                      <Banknote className="h-5 w-5" />
+                      Ganhos em Tempo Real
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-6">
+                      <p className="text-5xl font-bold tracking-tighter text-primary">
+                          {formatRealTimeCurrency(earnings)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                          {isWorking ? 
+                          `Ganhando agora.` :
+                          `Fora do expediente. O contador está pausado.`
+                          }
+                      </p>
+                  </CardContent>
+              </Card>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
