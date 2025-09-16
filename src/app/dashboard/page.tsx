@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -58,6 +58,14 @@ function isDuringWorkHours(workDays: number[], startTime: string, endTime: strin
     }
 }
 
+const PrivacyWrapper = ({ isPrivate, children, value }: { isPrivate: boolean, children: React.ReactNode, value: string }) => {
+  return (
+    <span className={`transition-all ${isPrivate ? 'blur-md' : ''}`}>
+      {isPrivate ? value.replace(/[\d,.]/g, '•') : children}
+    </span>
+  )
+}
+
 export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
@@ -66,6 +74,7 @@ export default function DashboardPage() {
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -214,6 +223,13 @@ export default function DashboardPage() {
   const netWorth = financialData.bankBalance + financialData.investments;
   const totalDailyEarnings = financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
 
+  const formattedRealTimeEarnings = formatRealTimeCurrency(realTimeEarnings);
+  const formattedNetWorth = formatCurrency(netWorth);
+  const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
+  const formattedBankBalance = formatCurrency(financialData.bankBalance);
+  const formattedInvestments = formatCurrency(financialData.investments);
+  const formattedTotalExpenses = formatCurrency(totalExpenses);
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
@@ -224,7 +240,13 @@ export default function DashboardPage() {
               <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
               <p className="text-muted-foreground">Visão geral e simplificada de suas finanças.</p>
             </div>
-             <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setIsPrivacyMode(!isPrivacyMode)} variant="ghost" size="icon">
+                  {isPrivacyMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  <span className="sr-only">Alternar modo de privacidade</span>
+              </Button>
+              <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
+            </div>
           </div>
           
            <div className="grid grid-cols-1 justify-items-center">
@@ -237,7 +259,9 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent className="pb-6">
                       <p className="text-5xl font-bold tracking-tighter text-primary">
-                          {formatRealTimeCurrency(realTimeEarnings)}
+                          <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeEarnings}>
+                            {formattedRealTimeEarnings}
+                          </PrivacyWrapper>
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                           {isWorking ? 
@@ -286,25 +310,45 @@ export default function DashboardPage() {
                 <CardContent className="space-y-6">
                     <div>
                         <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
-                        <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
+                        <p className="text-3xl font-bold">
+                          <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedNetWorth}>
+                            {formattedNetWorth}
+                          </PrivacyWrapper>
+                        </p>
                     </div>
                     <Separator />
                     <div className="space-y-4">
                          <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Ganho Diário Total</p>
-                             <p className="font-semibold">{formatCurrency(totalDailyEarnings)}</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalDailyEarnings}>
+                                 {formattedTotalDailyEarnings}
+                               </PrivacyWrapper>
+                             </p>
                         </div>
                         <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
-                             <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
+                                 {formattedBankBalance}
+                               </PrivacyWrapper>
+                             </p>
                         </div>
                          <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
-                             <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
+                                 {formattedInvestments}
+                               </PrivacyWrapper>
+                             </p>
                         </div>
                          <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
-                             <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
+                                 {formattedTotalExpenses}
+                               </PrivacyWrapper>
+                             </p>
                         </div>
                     </div>
                 </CardContent>
