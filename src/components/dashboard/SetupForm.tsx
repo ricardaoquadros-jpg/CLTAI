@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
-import { addDays, format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 import { Button } from '@/components/ui/button';
 import {
@@ -162,6 +162,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                         selected={field.value}
                         onSelect={field.onChange}
                         className="rounded-md border"
+                        locale={ptBR}
                       />
                     </FormControl>
                     <FormMessage />
