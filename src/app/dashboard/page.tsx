@@ -194,6 +194,9 @@ export default function DashboardPage() {
     setFinancialData(data);
     setRealTimeEarnings(0);
     setWorkdayProgress(0);
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+    }
   };
   
   const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'date'>) => {
