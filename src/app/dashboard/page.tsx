@@ -57,9 +57,12 @@ export default function DashboardPage() {
   
   const [earnings, setEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     setIsClient(true);
+    const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timeInterval);
   }, []);
   
   const earningsPerSecond = useMemo(() => {
@@ -204,6 +207,10 @@ export default function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center space-y-4 pt-2">
+                        <div className="text-center">
+                            <p className="font-semibold text-lg">{currentTime.toLocaleTimeString('pt-BR')}</p>
+                            <p className="text-sm text-muted-foreground">{currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        </div>
                        <div className="w-full space-y-2">
                          <div className="flex justify-between text-sm font-medium text-muted-foreground">
                             <span>Início: {financialData.workStartTime}</span>
