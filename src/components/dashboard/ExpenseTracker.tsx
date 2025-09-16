@@ -3,7 +3,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { Expense } from '@/lib/types';
-import { cn } from "@/lib/utils";
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -42,7 +41,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
-    <Card className={cn("col-span-1 lg:col-span-2", className)}>
+    <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
         <CardTitle>Controle de Despesas</CardTitle>
         <CardDescription>Registre e visualize suas despesas para este mês. Total: {formatCurrency(totalExpenses)}</CardDescription>

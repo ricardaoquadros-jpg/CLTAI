@@ -330,7 +330,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="bg-[hsl(var(--card-secondary))]">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
                         <Briefcase className="h-5 w-5 text-primary" />
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                    </div>
                 </CardContent>
             </Card>
-             <Card className="bg-[hsl(var(--card-secondary))]">
+             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
@@ -428,7 +428,6 @@ export default function DashboardPage() {
               expenses={expenses} 
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
-              className="bg-[hsl(var(--card-secondary))]"
             />
           </div>
         </div>
