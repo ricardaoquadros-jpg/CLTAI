@@ -336,7 +336,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
-                      <FormDescription>Opcional: A hora que você inicia o intervalo.</FormDescription>
+                      <FormDescription>Opcional. Deixe em branco se não houver intervalo.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -350,7 +350,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
-                      <FormDescription>Opcional: A hora que você termina o intervalo.</FormDescription>
+                      <FormDescription>Opcional. Deixe em branco se não houver intervalo.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
