@@ -178,10 +178,30 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="monthly">Mensal</SelectItem>
-                          <SelectItem value="monthly_business_days">Mensal (Dias Úteis)</SelectItem>
-                          <SelectItem value="daily">Diário</SelectItem>
-                          <SelectItem value="hourly">Por Hora</SelectItem>
+                          <SelectItem value="monthly">
+                            <div>
+                                <p>Mensal</p>
+                                <p className="text-xs text-muted-foreground">O salário é dividido por 30.44 dias.</p>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="monthly_business_days">
+                             <div>
+                                <p>Mensal (Dias Úteis)</p>
+                                <p className="text-xs text-muted-foreground">O salário é dividido pelos dias de trabalho no mês.</p>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="daily">
+                            <div>
+                                <p>Diário</p>
+                                <p className="text-xs text-muted-foreground">O valor é dividido pelas horas do seu expediente.</p>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="hourly">
+                             <div>
+                                <p>Por Hora</p>
+                                <p className="text-xs text-muted-foreground">Cálculo direto do valor por hora.</p>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>Com que frequência você recebe essa renda.</FormDescription>
