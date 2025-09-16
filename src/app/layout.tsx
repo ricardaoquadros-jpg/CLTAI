@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Financial Glimpse',
-  description: 'Acompanhe suas finanças em tempo real.',
+  title: 'CLT AI',
+  description: 'Acompanhe seus ganhos de CLT em tempo real.',
 };
 
 export default function RootLayout({
