@@ -22,5 +22,5 @@ export interface FinancialData {
   breakEndTime?: string;   // e.g., "13:00"
   hoursPerDay: number;   // Number of hours worked per day
   workDays: number[];    // Array of numbers 0 (Sun) to 6 (Sat)
-  totalWorkHoursInMonth?: number;
+  totalWorkHoursInMonth: number;
 }

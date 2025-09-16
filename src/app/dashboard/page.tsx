@@ -76,7 +76,7 @@ export default function DashboardPage() {
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.salary) return 0;
     const { amount, frequency } = financialData.salary;
-    const { hoursPerDay } = financialData;
+    const { hoursPerDay, totalWorkHoursInMonth } = financialData;
 
     try {
         switch (frequency) {
@@ -87,8 +87,8 @@ export default function DashboardPage() {
             case 'monthly_business_days':
                  return amount / (AVG_BUSINESS_DAYS_IN_MONTH * hoursPerDay * SECONDS_IN_HOUR);
             case 'monthly_work_hours':
-                if (!financialData.totalWorkHoursInMonth) return 0;
-                return amount / (financialData.totalWorkHoursInMonth * SECONDS_IN_HOUR);
+                if (!totalWorkHoursInMonth || totalWorkHoursInMonth === 0) return 0;
+                return amount / (totalWorkHoursInMonth * SECONDS_IN_HOUR);
             case 'monthly':
             default:
                 return amount / (AVG_DAYS_IN_MONTH * SECONDS_IN_DAY);
