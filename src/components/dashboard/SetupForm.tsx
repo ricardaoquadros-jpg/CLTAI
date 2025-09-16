@@ -28,7 +28,7 @@ import { CalendarDays, Clock } from 'lucide-react';
 
 const formSchema = z.object({
   salaryAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
-  salaryFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly', 'monthly_work_hours']),
+  salaryFrequency: z.enum(['monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
@@ -59,7 +59,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       salaryAmount: 5000,
-      salaryFrequency: 'monthly',
+      salaryFrequency: 'monthly_work_hours',
       bankBalance: 0,
       investments: 0,
       startTime: '09:00',
@@ -216,34 +216,16 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="monthly">
-                            <div>
-                                <p>Mensal</p>
-                                <p className="text-xs text-muted-foreground">O salário é dividido por 30.44 dias.</p>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="monthly_business_days">
-                             <div>
-                                <p>Mensal (Dias Úteis)</p>
-                                <p className="text-xs text-muted-foreground">O salário é dividido pelos dias de trabalho no mês.</p>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="monthly_work_hours">
+                           <SelectItem value="monthly_work_hours">
                              <div>
                                 <p>Mensal (Horas Trabalhadas)</p>
                                 <p className="text-xs text-muted-foreground">O salário é dividido pelo total de horas de trabalho.</p>
                             </div>
                           </SelectItem>
-                          <SelectItem value="daily">
+                          <SelectItem value="monthly">
                             <div>
-                                <p>Diário</p>
-                                <p className="text-xs text-muted-foreground">O valor é dividido pelas horas do seu expediente.</p>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="hourly">
-                             <div>
-                                <p>Por Hora</p>
-                                <p className="text-xs text-muted-foreground">Cálculo direto do valor por hora.</p>
+                                <p>Mensal</p>
+                                <p className="text-xs text-muted-foreground">O salário é dividido por 30.44 dias.</p>
                             </div>
                           </SelectItem>
                         </SelectContent>
