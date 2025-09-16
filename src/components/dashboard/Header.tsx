@@ -3,7 +3,6 @@ import React from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 const Header = () => {
   const router = useRouter();
@@ -12,6 +11,13 @@ const Header = () => {
   const [, setUserName] = useLocalStorage('userName', null);
 
   const handleLogoClick = () => {
+    router.push('/');
+  };
+
+  const handleLogout = () => {
+    setFinancialData(null);
+    setExpenses([]);
+    setUserName(null);
     router.push('/');
   };
 
@@ -38,9 +44,7 @@ const Header = () => {
               CLT AI
             </h1>
           </div>
-          <Link href="/login" passHref>
-            <Button variant="outline">Login</Button>
-          </Link>
+          <Button variant="outline" onClick={handleLogout}>Sair</Button>
         </div>
     </header>
   );
