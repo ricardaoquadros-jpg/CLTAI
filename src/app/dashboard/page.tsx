@@ -19,6 +19,9 @@ const SECONDS_IN = {
 };
 
 function isDuringWorkHours(startTime: string, endTime: string): boolean {
+    if (!startTime || !endTime) {
+      return false;
+    }
     const now = new Date();
     const start = new Date();
     const [startHours, startMinutes] = startTime.split(':').map(Number);
@@ -121,8 +124,8 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
-      <main className="flex-1 bg-secondary/50 p-4 sm:p-6 md:p-8">
-        <div className="container mx-auto">
+      <main className="flex flex-1 flex-col items-center justify-center bg-secondary/50 p-4 sm:p-6 md:p-8">
+        <div className="container mx-auto w-full max-w-4xl">
           <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
               <h2 className="text-3xl font-bold tracking-tight font-headline">Painel</h2>
@@ -131,6 +134,29 @@ export default function DashboardPage() {
              <Button onClick={handleReset} variant="outline">Resetar Dados</Button>
           </div>
           <div className="grid gap-6">
+            <Card className="w-full">
+              <CardHeader className="items-center">
+                <CardTitle className="flex items-center gap-2">
+                   <Banknote className="h-5 w-5 text-muted-foreground" />
+                   Ganhos em Tempo Real
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-6xl font-bold tracking-tighter text-primary">
+                    {formatRealTimeCurrency(earnings)}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                    {isWorking ? 
+                      `Ganhando agora. Expediente: ${financialData.workStartTime} - ${financialData.workEndTime}` :
+                      `Fora do expediente. O contador está pausado.`
+                    }
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                    Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
+                </p>
+              </CardContent>
+            </Card>
+
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <FinancialCard
                 title="Saldo Bancário"
@@ -158,29 +184,6 @@ export default function DashboardPage() {
               />
             </div>
             
-            <Card>
-              <CardHeader className="items-center">
-                <CardTitle className="flex items-center gap-2">
-                   <Banknote className="h-5 w-5 text-muted-foreground" />
-                   Ganhos em Tempo Real
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-6xl font-bold tracking-tighter text-primary">
-                    {formatRealTimeCurrency(earnings)}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                    {isWorking ? 
-                      `Ganhando agora. Expediente: ${financialData.workStartTime} - ${financialData.workEndTime}` :
-                      `Fora do expediente. O contador está pausado.`
-                    }
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
-                </p>
-              </CardContent>
-            </Card>
-
             <ExpenseTracker 
               expenses={expenses} 
               onAddExpense={handleAddExpense}
