@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
   
-  const [earnings, setEarnings] = useState(0);
+  const [dailyEarnings, setDailyEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -104,7 +104,8 @@ export default function DashboardPage() {
     }
     
     const { workDays, startTime, endTime, breakStartTime, breakEndTime } = financialData;
-
+    const dailyTotal = earningsPerSecond * financialData.hoursPerDay * SECONDS_IN_HOUR;
+    
     const calculateInitialState = () => {
       const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
       const now = new Date();
@@ -122,27 +123,9 @@ export default function DashboardPage() {
       setWorkdayProgress(progress > 100 ? 100 : progress);
 
       if (isWorking) {
-        const elapsedSecondsToday = (now.getTime() - startOfWorkDay.getTime()) / 1000;
-        let breakSeconds = 0;
-
-        if (breakStartTime && breakEndTime) {
-            const breakStart = parse(breakStartTime, 'HH:mm', new Date());
-            const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
-            if (now > breakEnd) {
-                breakSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
-            } else if (now > breakStart) {
-                breakSeconds = (now.getTime() - breakStart.getTime()) / 1000;
-            }
-        }
-
-        const potentialWorkSecondsToday = financialData.hoursPerDay * SECONDS_IN_HOUR;
-        const workedSeconds = Math.min(elapsedSecondsToday - breakSeconds, potentialWorkSecondsToday);
-
-        if (workedSeconds > 0) {
-            setEarnings(workedSeconds * earningsPerSecond);
-        } else {
-            setEarnings(0);
-        }
+        setDailyEarnings(dailyTotal);
+      } else {
+        setDailyEarnings(0);
       }
     };
 
@@ -150,8 +133,10 @@ export default function DashboardPage() {
 
     const timer = setInterval(() => {
       const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
-      if (financialData && isWorking) {
-         setEarnings((prev) => prev + earningsPerSecond);
+      if (isWorking) {
+         setDailyEarnings(dailyTotal);
+      } else {
+        setDailyEarnings(0);
       }
       
       const now = new Date();
@@ -171,11 +156,11 @@ export default function DashboardPage() {
 
     return () => clearInterval(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [financialData]);
+  }, [financialData, earningsPerSecond]);
 
   const handleSetupComplete = (data: FinancialData) => {
     setFinancialData(data);
-    setEarnings(0);
+    setDailyEarnings(0);
     setWorkdayProgress(0);
   };
   
@@ -226,7 +211,7 @@ export default function DashboardPage() {
   const handleReset = () => {
     setFinancialData(null);
     setExpenses([]);
-    setEarnings(0);
+    setDailyEarnings(0);
   }
 
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
@@ -251,19 +236,19 @@ export default function DashboardPage() {
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
-                      Ganhos em Tempo Real
+                      Ganhos do Dia
                       </CardTitle>
                   </CardHeader>
                   <CardContent className="pb-6">
                       <p className="text-5xl font-bold tracking-tighter text-primary">
-                          {formatRealTimeCurrency(earnings)}
+                          {formatCurrency(dailyEarnings)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                           {isWorking ? 
-                            `Ganhando agora.` :
+                            `Ganhos de hoje com base na sua carga horária.` :
                             inBreak ? 
-                            `Em horário de intervalo. O contador está pausado.` :
-                            `Fora do expediente. O contador está pausado.`
+                            `Em horário de intervalo.` :
+                            `Fora do expediente.`
                           }
                       </p>
                   </CardContent>
