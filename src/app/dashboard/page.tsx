@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -257,6 +257,7 @@ export default function DashboardPage() {
   const formattedBankBalance = formatCurrency(financialData.bankBalance);
   const formattedInvestments = formatCurrency(financialData.investments);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
+  const formattedSalary = formatCurrency(financialData.salary.amount);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -364,6 +365,14 @@ export default function DashboardPage() {
                     </div>
                     <Separator />
                     <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Salário</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedSalary}>
+                                 {formattedSalary}
+                               </PrivacyWrapper>
+                             </p>
+                        </div>
                          <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Ganho Diário Total</p>
                              <p className="font-semibold">
