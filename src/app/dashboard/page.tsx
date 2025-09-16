@@ -265,7 +265,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
-      <main className="flex flex-1 flex-col items-center bg-secondary/50 p-4 sm:p-6 md:p-8">
+      <main className="flex flex-1 flex-col items-center bg-[#898c90] p-4 sm:p-6 md:p-8">
         <div className="w-full max-w-4xl space-y-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -283,7 +283,7 @@ export default function DashboardPage() {
           </div>
           
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
-              <Card className="w-full text-center bg-[#898c90]">
+              <Card className="w-full text-center">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
@@ -306,7 +306,7 @@ export default function DashboardPage() {
                       </p>
                   </CardContent>
               </Card>
-              <Card className="w-full text-center bg-[#898c90]">
+              <Card className="w-full text-center">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Calendar className="h-5 w-5" />
@@ -330,7 +330,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="bg-[#898c90]">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
                         <Briefcase className="h-5 w-5 text-primary" />
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                    </div>
                 </CardContent>
             </Card>
-             <Card className="bg-[#898c90]">
+             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
@@ -425,7 +425,6 @@ export default function DashboardPage() {
             </Card>
             
             <ExpenseTracker 
-              className="bg-[#898c90]"
               expenses={expenses} 
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
@@ -436,7 +435,5 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
 
     
