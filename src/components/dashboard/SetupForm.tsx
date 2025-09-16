@@ -5,7 +5,7 @@ import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
 import React, { useState, useEffect } from 'react';
-import { differenceInCalendarDays, startOfMonth } from 'date-fns';
+import { startOfMonth, isSameDay } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -83,22 +83,17 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     setSelectedDates(dates);
   }, [selectedWeekDays]);
 
-  const handleCalendarSelect = (newlySelectedDates: Date[] | undefined) => {
-    if (!newlySelectedDates) {
-      setSelectedDates([]);
-      return;
-    }
-    
-    const uniqueWeekdays = new Set<number>();
-    
-    newlySelectedDates.forEach(date => {
-      uniqueWeekdays.add(date.getDay());
+  const handleCalendarSelect = (day: Date | undefined) => {
+    if (!day) return;
+
+    setSelectedDates(prevSelectedDates => {
+      const isAlreadySelected = prevSelectedDates.some(selectedDay => isSameDay(selectedDay, day));
+      if (isAlreadySelected) {
+        return prevSelectedDates.filter(selectedDay => !isSameDay(selectedDay, day));
+      } else {
+        return [...prevSelectedDates, day];
+      }
     });
-
-    const sortedWeekdays = Array.from(uniqueWeekdays).sort();
-
-    form.setValue('workDays', sortedWeekdays, { shouldValidate: true });
-    setSelectedDates(newlySelectedDates);
   };
   
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -235,7 +230,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                    <Calendar
                     mode="multiple"
                     selected={selectedDates}
-                    onSelect={handleCalendarSelect}
+                    onDayClick={handleCalendarSelect}
                     className="rounded-md border"
                     locale={ptBR}
                     month={startOfMonth(new Date())}
