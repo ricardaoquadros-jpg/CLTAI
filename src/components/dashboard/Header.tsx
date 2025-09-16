@@ -1,9 +1,7 @@
 'use client';
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
   const router = useRouter();
@@ -11,18 +9,16 @@ const Header = () => {
   const [, setExpenses] = useLocalStorage('expenses', []);
   const [, setUserName] = useLocalStorage('userName', null);
 
-  const handleLogout = () => {
-    // Clear all user data from localStorage
-    setFinancialData(null);
-    setExpenses([]);
-    setUserName(null);
-    router.push('/');
+  const handleLogoClick = () => {
+    // Potentially reset or navigate, for now just a placeholder
+    // Or maybe we want to go to the dashboard if we are somewhere else.
+    // Since there's only one page, this can be empty or link to '/'
   };
 
   return (
     <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleLogoClick}>
              <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -42,10 +38,7 @@ const Header = () => {
               Financial Glimpse
             </h1>
           </div>
-          <Button onClick={handleLogout} variant="ghost" size="sm">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          {/* Logout button was here */}
         </div>
     </header>
   );
