@@ -60,7 +60,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     defaultValues: {
       salaryAmount: 5000,
       salaryFrequency: 'monthly',
-      bankBalance: 1000,
+      bankBalance: 0,
       investments: 0,
       startTime: '09:00',
       endTime: '18:00',
