@@ -23,6 +23,8 @@ const formSchema = z.object({
   incomeFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
+  workStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
+  workEndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
 });
 
 interface SetupFormProps {
@@ -37,6 +39,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       incomeFrequency: 'monthly',
       bankBalance: 1000,
       investments: 0,
+      workStartTime: '09:00',
+      workEndTime: '18:00',
     },
   });
 
@@ -48,6 +52,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       },
       bankBalance: values.bankBalance,
       investments: values.investments,
+      workStartTime: values.workStartTime,
+      workEndTime: values.workEndTime,
     });
   }
 
@@ -98,6 +104,36 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                         </SelectContent>
                       </Select>
                       <FormDescription>Com que frequência você recebe essa renda.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+               <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="workStartTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Início do Expediente</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormDescription>A hora que você começa a trabalhar.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="workEndTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fim do Expediente</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormDescription>A hora que você para de trabalhar.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

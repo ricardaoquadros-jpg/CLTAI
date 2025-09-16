@@ -16,4 +16,6 @@ export interface FinancialData {
   income: Income;
   bankBalance: number;
   investments: number;
+  workStartTime: string; // HH:mm format
+  workEndTime: string;   // HH:mm format
 }

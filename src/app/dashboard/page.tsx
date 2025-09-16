@@ -18,6 +18,25 @@ const SECONDS_IN = {
   monthly: 30.44 * 24 * 3600,
 };
 
+function isDuringWorkHours(startTime: string, endTime: string): boolean {
+    const now = new Date();
+    const start = new Date();
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    start.setHours(startHours, startMinutes, 0, 0);
+
+    const end = new Date();
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    end.setHours(endHours, endMinutes, 0, 0);
+    
+    // Handle overnight shifts
+    if (end < start) {
+        // If current time is after start or before end (on the next day)
+        return now >= start || now <= end;
+    }
+
+    return now >= start && now <= end;
+}
+
 export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
@@ -37,11 +56,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setEarnings((prev) => prev + earningsPerSecond);
+      if (financialData && isDuringWorkHours(financialData.workStartTime, financialData.workEndTime)) {
+         setEarnings((prev) => prev + earningsPerSecond);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [earningsPerSecond]);
+  }, [earningsPerSecond, financialData]);
 
   const handleSetupComplete = (data: FinancialData) => {
     setFinancialData(data);
@@ -95,6 +116,8 @@ export default function DashboardPage() {
     setEarnings(0);
   }
 
+  const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime);
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
@@ -107,49 +130,57 @@ export default function DashboardPage() {
             </div>
              <Button onClick={handleReset} variant="outline">Resetar Dados</Button>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <FinancialCard
-              title="Saldo Bancário"
-              icon={<Landmark className="h-5 w-5" />}
-              value={formatCurrency(financialData.bankBalance)}
-              description="Total de dinheiro disponível"
-            />
-            <FinancialCard
-              title="Investimentos"
-              icon={<LineChart className="h-5 w-5" />}
-              value={formatCurrency(financialData.investments)}
-              description="Valor de todos os ativos"
-            />
-            <FinancialCard
-              title="Despesas Totais"
-              icon={<Wallet className="h-5 w-5" />}
-              value={formatCurrency(totalExpenses)}
-              description="Gasto este mês"
-            />
-             <FinancialCard
-              title="Patrimônio Líquido"
-              icon={<TrendingUp className="h-5 w-5" />}
-              value={formatCurrency(financialData.bankBalance + financialData.investments)}
-              description="Saldo + Investimentos"
-            />
-
-            <Card className="col-span-1 lg:col-span-2">
-              <CardHeader>
+          <div className="grid gap-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <FinancialCard
+                title="Saldo Bancário"
+                icon={<Landmark className="h-5 w-5" />}
+                value={formatCurrency(financialData.bankBalance)}
+                description="Total de dinheiro disponível"
+              />
+              <FinancialCard
+                title="Investimentos"
+                icon={<LineChart className="h-5 w-5" />}
+                value={formatCurrency(financialData.investments)}
+                description="Valor de todos os ativos"
+              />
+              <FinancialCard
+                title="Despesas Totais"
+                icon={<Wallet className="h-5 w-5" />}
+                value={formatCurrency(totalExpenses)}
+                description="Gasto este mês"
+              />
+              <FinancialCard
+                title="Patrimônio Líquido"
+                icon={<TrendingUp className="h-5 w-5" />}
+                value={formatCurrency(financialData.bankBalance + financialData.investments)}
+                description="Saldo + Investimentos"
+              />
+            </div>
+            
+            <Card>
+              <CardHeader className="items-center">
                 <CardTitle className="flex items-center gap-2">
                    <Banknote className="h-5 w-5 text-muted-foreground" />
                    Ganhos em Tempo Real
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold tracking-tighter text-primary">
+              <CardContent className="text-center">
+                <p className="text-6xl font-bold tracking-tighter text-primary">
                     {formatRealTimeCurrency(earnings)}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                    Ganhos desde que você abriu a página. Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
+                <p className="text-sm text-muted-foreground mt-2">
+                    {isWorking ? 
+                      `Ganhando agora. Expediente: ${financialData.workStartTime} - ${financialData.workEndTime}` :
+                      `Fora do expediente. O contador está pausado.`
+                    }
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                    Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
                 </p>
               </CardContent>
             </Card>
-            
+
             <ExpenseTracker 
               expenses={expenses} 
               onAddExpense={handleAddExpense}
