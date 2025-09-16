@@ -18,11 +18,17 @@ const SECONDS_IN = {
   monthly: 30.44 * 24 * 3600,
 };
 
-function isDuringWorkHours(startTime: string, endTime: string): boolean {
-    if (!startTime || !endTime) {
+function isDuringWorkHours(startTime: string, endTime: string, workDays: number[]): boolean {
+    if (!startTime || !endTime || !workDays || workDays.length === 0) {
       return false;
     }
     const now = new Date();
+    const currentDay = now.getDay();
+    
+    if (!workDays.includes(currentDay)) {
+        return false;
+    }
+
     const start = new Date();
     const [startHours, startMinutes] = startTime.split(':').map(Number);
     start.setHours(startHours, startMinutes, 0, 0);
@@ -58,11 +64,11 @@ export default function DashboardPage() {
   }, [financialData]);
 
   useEffect(() => {
-    if (!financialData?.workStartTime || !financialData?.workEndTime) {
+    if (!financialData?.workStartTime || !financialData?.workEndTime || !financialData?.workDays) {
       return;
     }
     const timer = setInterval(() => {
-      if (financialData && isDuringWorkHours(financialData.workStartTime, financialData.workEndTime)) {
+      if (financialData && isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays)) {
          setEarnings((prev) => prev + earningsPerSecond);
       }
     }, 1000);
@@ -124,7 +130,7 @@ export default function DashboardPage() {
     setEarnings(0);
   }
 
-  const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime);
+  const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
   const netWorth = financialData.bankBalance + financialData.investments;
 
   return (

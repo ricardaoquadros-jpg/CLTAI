@@ -18,4 +18,5 @@ export interface FinancialData {
   investments: number;
   workStartTime: string; // HH:mm format
   workEndTime: string;   // HH:mm format
+  workDays: number[];    // Array of numbers 0 (Sun) to 6 (Sat)
 }
