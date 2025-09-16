@@ -6,10 +6,10 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import FinancialCard from '@/components/dashboard/FinancialCard';
 import { Banknote, Landmark, LineChart, TrendingUp, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const SECONDS_IN = {
   hourly: 3600,
@@ -58,6 +58,9 @@ export default function DashboardPage() {
   }, [financialData]);
 
   useEffect(() => {
+    if (!financialData?.workStartTime || !financialData?.workEndTime) {
+      return;
+    }
     const timer = setInterval(() => {
       if (financialData && isDuringWorkHours(financialData.workStartTime, financialData.workEndTime)) {
          setEarnings((prev) => prev + earningsPerSecond);
@@ -103,7 +106,9 @@ export default function DashboardPage() {
     }
   };
   
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  }, [expenses]);
 
   if (!isClient) {
     return null; // or a loading skeleton
@@ -120,69 +125,70 @@ export default function DashboardPage() {
   }
 
   const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime);
+  const netWorth = financialData.bankBalance + financialData.investments;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
-      <main className="flex flex-1 flex-col items-center justify-center bg-secondary/50 p-4 sm:p-6 md:p-8">
-        <div className="container mx-auto w-full max-w-4xl">
-          <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+      <main className="flex flex-1 flex-col items-center bg-secondary/50 p-4 sm:p-6 md:p-8">
+        <div className="container mx-auto w-full max-w-2xl">
+          <div className="mb-8 flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight font-headline">Painel</h2>
-              <p className="text-muted-foreground">Sua visão financeira em tempo real.</p>
+              <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
+              <p className="text-muted-foreground">Visão geral e simplificada de suas finanças.</p>
             </div>
-             <Button onClick={handleReset} variant="outline">Resetar Dados</Button>
+             <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
           </div>
-          <div className="grid gap-6">
-            <Card className="w-full">
-              <CardHeader className="items-center">
-                <CardTitle className="flex items-center gap-2">
-                   <Banknote className="h-5 w-5 text-muted-foreground" />
+          <div className="grid gap-8">
+            <Card className="w-full text-center">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                   <Banknote className="h-5 w-5" />
                    Ganhos em Tempo Real
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-6xl font-bold tracking-tighter text-primary">
+              <CardContent className="pb-6">
+                <p className="text-5xl font-bold tracking-tighter text-primary">
                     {formatRealTimeCurrency(earnings)}
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                     {isWorking ? 
                       `Ganhando agora. Expediente: ${financialData.workStartTime} - ${financialData.workEndTime}` :
                       `Fora do expediente. O contador está pausado.`
                     }
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
-                </p>
               </CardContent>
             </Card>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <FinancialCard
-                title="Saldo Bancário"
-                icon={<Landmark className="h-5 w-5" />}
-                value={formatCurrency(financialData.bankBalance)}
-                description="Total de dinheiro disponível"
-              />
-              <FinancialCard
-                title="Investimentos"
-                icon={<LineChart className="h-5 w-5" />}
-                value={formatCurrency(financialData.investments)}
-                description="Valor de todos os ativos"
-              />
-              <FinancialCard
-                title="Despesas Totais"
-                icon={<Wallet className="h-5 w-5" />}
-                value={formatCurrency(totalExpenses)}
-                description="Gasto este mês"
-              />
-              <FinancialCard
-                title="Patrimônio Líquido"
-                icon={<TrendingUp className="h-5 w-5" />}
-                value={formatCurrency(financialData.bankBalance + financialData.investments)}
-                description="Saldo + Investimentos"
-              />
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        Resumo Financeiro
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
+                        <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
+                    </div>
+                    <Separator />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+                        <div className="flex flex-col items-center sm:items-start">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
+                             <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
+                        </div>
+                         <div className="flex flex-col items-center sm:items-start">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
+                             <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
+                        </div>
+                         <div className="flex flex-col items-center sm:items-start">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
+                             <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
             
             <ExpenseTracker 
               expenses={expenses} 
