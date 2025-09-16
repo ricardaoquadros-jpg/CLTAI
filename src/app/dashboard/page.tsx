@@ -283,7 +283,7 @@ export default function DashboardPage() {
           </div>
           
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
-              <Card className="w-full text-center">
+              <Card className="w-full text-center bg-[#898c90]">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
@@ -306,7 +306,7 @@ export default function DashboardPage() {
                       </p>
                   </CardContent>
               </Card>
-              <Card className="w-full text-center">
+              <Card className="w-full text-center bg-[#898c90]">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Calendar className="h-5 w-5" />
@@ -330,7 +330,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card>
+            <Card className="bg-[#898c90]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
                         <Briefcase className="h-5 w-5 text-primary" />
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                    </div>
                 </CardContent>
             </Card>
-             <Card>
+             <Card className="bg-[#898c90]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
@@ -425,6 +425,7 @@ export default function DashboardPage() {
             </Card>
             
             <ExpenseTracker 
+              className="bg-[#898c90]"
               expenses={expenses} 
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
@@ -435,5 +436,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     

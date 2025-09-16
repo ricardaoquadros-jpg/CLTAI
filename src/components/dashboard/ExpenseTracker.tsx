@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '../ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   description: z.string().min(2, { message: 'A descrição deve ter pelo menos 2 caracteres.' }),
@@ -41,7 +42,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
-    <Card className="col-span-1 lg:col-span-2">
+    <Card className={cn("col-span-1 lg:col-span-2", className)}>
       <CardHeader>
         <CardTitle>Controle de Despesas</CardTitle>
         <CardDescription>Registre e visualize suas despesas para este mês. Total: {formatCurrency(totalExpenses)}</CardDescription>
@@ -112,3 +113,5 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
     </Card>
   );
 }
+
+    
