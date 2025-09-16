@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
+import React, { useState, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +19,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar } from "@/components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 
 const formSchema = z.object({
@@ -28,16 +30,25 @@ const formSchema = z.object({
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
   workStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
   workEndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
-   workDays: z.array(z.date()).refine((value) => value.length > 0, {
-    message: "Você precisa selecionar pelo menos um dia de trabalho.",
-  }),
+   workDays: z.array(z.number()).min(1, { message: "Você precisa selecionar pelo menos um dia de trabalho." }),
 });
+
+const weekDaysMap = [
+    { label: "D", value: "0" }, // Domingo
+    { label: "S", value: "1" }, // Segunda
+    { label: "T", value: "2" }, // Terça
+    { label: "Q", value: "3" }, // Quarta
+    { label: "Q", value: "4" }, // Quinta
+    { label: "S", value: "5" }, // Sexta
+    { label: "S", value: "6" }, // Sábado
+] as const;
 
 interface SetupFormProps {
   onSetupComplete: (data: FinancialData) => void;
 }
 
 export function SetupForm({ onSetupComplete }: SetupFormProps) {
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,10 +58,30 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: 0,
       workStartTime: '09:00',
       workEndTime: '18:00',
-      workDays: [],
+      workDays: ["1", "2", "3", "4", "5"].map(Number), // Default to Mon-Fri
     },
   });
 
+  const selectedWeekDays = form.watch('workDays');
+
+  useEffect(() => {
+    const dates: Date[] = [];
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    if(selectedWeekDays && selectedWeekDays.length > 0) {
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            if (selectedWeekDays.includes(date.getDay())) {
+                dates.push(date);
+            }
+        }
+    }
+    setSelectedDates(dates);
+  }, [selectedWeekDays]);
+  
   function onSubmit(values: z.infer<typeof formSchema>) {
     onSetupComplete({
       income: {
@@ -61,7 +92,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: values.investments,
       workStartTime: values.workStartTime,
       workEndTime: values.workEndTime,
-      workDays: values.workDays.map(date => date.getDay()),
+      workDays: values.workDays,
     });
   }
 
@@ -151,24 +182,43 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                 control={form.control}
                 name="workDays"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col items-center">
-                    <FormLabel>Dias de Trabalho</FormLabel>
-                    <FormDescription>
-                      Selecione os dias da semana que você trabalha.
-                    </FormDescription>
+                   <FormItem className="flex flex-col items-center">
+                    <FormLabel>Dias de Trabalho na Semana</FormLabel>
                     <FormControl>
-                       <Calendar
-                        mode="multiple"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        className="rounded-md border"
-                        locale={ptBR}
-                      />
+                       <ToggleGroup
+                        type="multiple"
+                        variant="outline"
+                        value={field.value.map(String)}
+                        onValueChange={(value) => {
+                            field.onChange(value.map(Number));
+                        }}
+                        className="gap-2"
+                       >
+                         {weekDaysMap.map(day => (
+                            <ToggleGroupItem key={day.value} value={day.value} aria-label={`Toggle ${day.label}`}>
+                                {day.label}
+                            </ToggleGroupItem>
+                         ))}
+                       </ToggleGroup>
                     </FormControl>
+                    <FormDescription>
+                      Selecione os dias da semana que você trabalha. O calendário abaixo será preenchido automaticamente.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+               <div className="flex flex-col items-center">
+                   <FormLabel className="mb-2">Calendário de Trabalho (Mês Atual)</FormLabel>
+                   <Calendar
+                    mode="multiple"
+                    selected={selectedDates}
+                    onSelect={() => {}} // Disable manual selection on calendar
+                    className="rounded-md border"
+                    locale={ptBR}
+                    disabled // Makes days unclickable
+                  />
+               </div>
               <FormField
                 control={form.control}
                 name="bankBalance"
