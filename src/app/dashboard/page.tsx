@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
   
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
+  const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -106,6 +107,11 @@ export default function DashboardPage() {
         return 0;
     }
   }, [financialData]);
+  
+  const totalDailyEarnings = useMemo(() => {
+      if (!financialData) return 0;
+      return financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
+  }, [financialData, earningsPerSecond]);
 
   useEffect(() => {
     if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime) {
@@ -120,11 +126,11 @@ export default function DashboardPage() {
       const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
       const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
 
-      let elapsedSeconds = 0;
+      let currentDayEarnings = 0;
       let progress = 0;
 
       if (now > startOfWorkDay && now <= endOfWorkDay && isWorking) {
-        elapsedSeconds = (now.getTime() - startOfWorkDay.getTime()) / 1000;
+        let elapsedSeconds = (now.getTime() - startOfWorkDay.getTime()) / 1000;
         
         if (breakStartTime && breakEndTime) {
             const breakStart = parse(breakStartTime, 'HH:mm', new Date());
@@ -133,34 +139,51 @@ export default function DashboardPage() {
             if (now > breakEnd) {
                 const breakDurationSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
                 elapsedSeconds -= breakDurationSeconds;
-            } else if (now > breakStart) {
+            } else if (now > breakStart && now < breakEnd) {
                 elapsedSeconds -= (now.getTime() - breakStart.getTime()) / 1000;
             }
         }
         
-        setRealTimeEarnings(elapsedSeconds * earningsPerSecond);
+        currentDayEarnings = elapsedSeconds * earningsPerSecond;
         
         const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
         const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
         progress = (elapsedDuration / totalDuration) * 100;
 
       } else if (now > endOfWorkDay && workDays.includes(now.getDay())) {
-         let totalWorkSeconds = financialData.hoursPerDay * SECONDS_IN_HOUR;
-         setRealTimeEarnings(totalWorkSeconds * earningsPerSecond);
+         currentDayEarnings = totalDailyEarnings;
          progress = 100;
       } else {
-        setRealTimeEarnings(0);
+        currentDayEarnings = 0;
         progress = 0;
       }
-      
+
+      setRealTimeEarnings(currentDayEarnings);
       setWorkdayProgress(progress > 100 ? 100 : progress);
+
+      // Calculate month earnings
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      let monthToDateEarnings = 0;
+
+      for (let d = startOfMonth; d < today; d.setDate(d.getDate() + 1)) {
+        if (workDays.includes(d.getDay())) {
+          monthToDateEarnings += totalDailyEarnings;
+        }
+      }
+      
+      if (workDays.includes(today.getDay())) {
+        monthToDateEarnings += currentDayEarnings;
+      }
+      
+      setRealTimeMonthEarnings(monthToDateEarnings);
     };
 
     calculateEarnings();
     const timer = setInterval(calculateEarnings, 1000);
 
     return () => clearInterval(timer);
-  }, [financialData, earningsPerSecond]);
+  }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
   const handleSetupComplete = (data: FinancialData) => {
     setFinancialData(data);
@@ -221,9 +244,9 @@ export default function DashboardPage() {
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + financialData.investments;
-  const totalDailyEarnings = financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
 
   const formattedRealTimeEarnings = formatRealTimeCurrency(realTimeEarnings);
+  const formattedRealTimeMonthEarnings = formatRealTimeCurrency(realTimeMonthEarnings);
   const formattedNetWorth = formatCurrency(netWorth);
   const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
   const formattedBankBalance = formatCurrency(financialData.bankBalance);
@@ -249,8 +272,8 @@ export default function DashboardPage() {
             </div>
           </div>
           
-           <div className="grid grid-cols-1 justify-items-center">
-              <Card className="w-full max-w-lg text-center">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
+              <Card className="w-full text-center">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
@@ -270,6 +293,24 @@ export default function DashboardPage() {
                             `Em horário de intervalo. Ganhos pausados.` :
                             `Fora do expediente.`
                           }
+                      </p>
+                  </CardContent>
+              </Card>
+              <Card className="w-full text-center">
+                  <CardHeader>
+                      <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                      <Calendar className="h-5 w-5" />
+                      Ganhos do Mês (Tempo Real)
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-6">
+                      <p className="text-5xl font-bold tracking-tighter text-primary">
+                          <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeMonthEarnings}>
+                            {formattedRealTimeMonthEarnings}
+                          </PrivacyWrapper>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                          Ganhos acumulados até a data e hora atual.
                       </p>
                   </CardContent>
               </Card>
