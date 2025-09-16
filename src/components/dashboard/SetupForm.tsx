@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
+import { addDays, format } from "date-fns"
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,17 +18,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from "@/components/ui/checkbox"
+import { Calendar } from "@/components/ui/calendar"
 
-const daysOfWeek = [
-  { id: 1, label: 'Segunda-feira' },
-  { id: 2, label: 'Terça-feira' },
-  { id: 3, label: 'Quarta-feira' },
-  { id: 4, label: 'Quinta-feira' },
-  { id: 5, label: 'Sexta-feira' },
-  { id: 6, label: 'Sábado' },
-  { id: 0, label: 'Domingo' },
-]
 
 const formSchema = z.object({
   incomeAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
@@ -36,7 +28,7 @@ const formSchema = z.object({
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
   workStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
   workEndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
-  workDays: z.array(z.number()).refine((value) => value.some((day) => day !== undefined), {
+   workDays: z.array(z.date()).refine((value) => value.length > 0, {
     message: "Você precisa selecionar pelo menos um dia de trabalho.",
   }),
 });
@@ -55,7 +47,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: 0,
       workStartTime: '09:00',
       workEndTime: '18:00',
-      workDays: [1, 2, 3, 4, 5],
+      workDays: [],
     },
   });
 
@@ -69,7 +61,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: values.investments,
       workStartTime: values.workStartTime,
       workEndTime: values.workEndTime,
-      workDays: values.workDays,
+      workDays: values.workDays.map(date => date.getDay()),
     });
   }
 
@@ -156,55 +148,26 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                 />
               </div>
               <FormField
-                  control={form.control}
-                  name="workDays"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel>Dias de Trabalho</FormLabel>
-                        <FormDescription>
-                          Selecione os dias da semana que você trabalha.
-                        </FormDescription>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {daysOfWeek.map((item) => (
-                        <FormField
-                          key={item.id}
-                          control={form.control}
-                          name="workDays"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...field.value, item.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.id
-                                            )
-                                          )
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            )
-                          }}
-                        />
-                      ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                control={form.control}
+                name="workDays"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col items-center">
+                    <FormLabel>Dias de Trabalho</FormLabel>
+                    <FormDescription>
+                      Selecione os dias da semana que você trabalha.
+                    </FormDescription>
+                    <FormControl>
+                       <Calendar
+                        mode="multiple"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        className="rounded-md border"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="bankBalance"
