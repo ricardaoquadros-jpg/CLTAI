@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
+  const [userName] = useLocalStorage<string | null>('userName', null);
   
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
@@ -268,6 +269,7 @@ export default function DashboardPage() {
         <div className="w-full max-w-4xl space-y-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
+              {userName && <h1 className="text-3xl font-bold tracking-tight mb-2">Olá, {userName}!</h1>}
               <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
               <p className="text-muted-foreground">Visão geral e simplificada de suas finanças.</p>
             </div>
