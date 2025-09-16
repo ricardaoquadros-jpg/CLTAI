@@ -353,16 +353,16 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     </FormItem>
                   )}
                 />
-               <Card className="bg-secondary/50">
+               <Card className="bg-primary text-primary-foreground">
                 <CardContent className="p-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Total de dias de trabalho</p>
+                      <p className="text-sm font-medium flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Total de dias de trabalho</p>
                       <p className="font-semibold text-lg">{selectedDates.length}</p>
                     </div>
-                    <Separator />
+                    <Separator className="bg-primary-foreground/20" />
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Clock className="h-4 w-4" /> Total de horas de trabalho</p>
+                      <p className="text-sm font-medium flex items-center gap-1.5"><Clock className="h-4 w-4" /> Total de horas de trabalho</p>
                       <p className="font-semibold text-lg">{totalWorkHours.toFixed(2)}</p>
                     </div>
                   </div>
