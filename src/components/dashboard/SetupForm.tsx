@@ -195,9 +195,14 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Valor do Salário</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="5000" {...field} />
-                      </FormControl>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                          R$
+                        </span>
+                        <FormControl>
+                          <Input type="number" placeholder="5000" className="pl-10" {...field} />
+                        </FormControl>
+                      </div>
                       <FormDescription>Seu salário antes dos impostos.</FormDescription>
                       <FormMessage />
                     </FormItem>
