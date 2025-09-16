@@ -169,7 +169,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen w-full flex-col">
       <Header />
       <main className="flex flex-1 flex-col items-center bg-secondary/50 p-4 sm:p-6 md:p-8">
-        <div className="container mx-auto w-full max-w-2xl">
+        <div className="w-full max-w-4xl">
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
@@ -177,26 +177,28 @@ export default function DashboardPage() {
             </div>
              <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
           </div>
-          <div className="grid gap-8">
-            <Card className="w-full text-center">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
-                   <Banknote className="h-5 w-5" />
-                   Ganhos em Tempo Real
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <p className="text-5xl font-bold tracking-tighter text-primary">
-                    {formatRealTimeCurrency(earnings)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                    {isWorking ? 
-                      `Ganhando agora.` :
-                      `Fora do expediente. O contador está pausado.`
-                    }
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 gap-8">
+            <div className="flex justify-center">
+                <Card className="w-full max-w-2xl text-center">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                       <Banknote className="h-5 w-5" />
+                       Ganhos em Tempo Real
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-6">
+                    <p className="text-5xl font-bold tracking-tighter text-primary">
+                        {formatRealTimeCurrency(earnings)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        {isWorking ? 
+                          `Ganhando agora.` :
+                          `Fora do expediente. O contador está pausado.`
+                        }
+                    </p>
+                  </CardContent>
+                </Card>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <Card>
