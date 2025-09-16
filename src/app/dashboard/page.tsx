@@ -249,6 +249,8 @@ export default function DashboardPage() {
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + financialData.investments;
 
+  const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
+  
   const formattedRealTimeEarnings = formatRealTimeCurrency(realTimeEarnings);
   const formattedRealTimeMonthEarnings = formatRealTimeCurrency(realTimeMonthEarnings);
   const formattedNetWorth = formatCurrency(netWorth);
@@ -309,15 +311,18 @@ export default function DashboardPage() {
                       Ganhos do Mês (Tempo Real)
                       </CardTitle>
                   </CardHeader>
-                  <CardContent className="pb-6">
+                  <CardContent className="pb-6 space-y-4">
                       <p className="text-5xl font-bold tracking-tighter text-primary">
                           <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeMonthEarnings}>
                             {formattedRealTimeMonthEarnings}
                           </PrivacyWrapper>
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                          Ganhos acumulados até a data e hora atual.
-                      </p>
+                      <div className="space-y-2">
+                        <Progress value={monthEarningsProgress} className="w-full h-3" />
+                        <p className="text-center text-sm font-bold text-foreground">
+                            {monthEarningsProgress.toFixed(2)}% do salário mensal
+                        </p>
+                      </div>
                   </CardContent>
               </Card>
           </div>
