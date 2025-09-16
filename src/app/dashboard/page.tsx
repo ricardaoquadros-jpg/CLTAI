@@ -177,84 +177,80 @@ export default function DashboardPage() {
             </div>
              <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
           </div>
-          <div className="grid grid-cols-1 gap-8">
-            <div className="flex justify-center">
-                <Card className="w-full max-w-2xl text-center">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
-                       <Banknote className="h-5 w-5" />
-                       Ganhos em Tempo Real
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-6">
-                    <p className="text-5xl font-bold tracking-tighter text-primary">
-                        {formatRealTimeCurrency(earnings)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        {isWorking ? 
-                          `Ganhando agora.` :
-                          `Fora do expediente. O contador está pausado.`
-                        }
-                    </p>
-                  </CardContent>
-                </Card>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card className="md:col-span-2 text-center">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
+                   <Banknote className="h-5 w-5" />
+                   Ganhos em Tempo Real
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-6">
+                <p className="text-5xl font-bold tracking-tighter text-primary">
+                    {formatRealTimeCurrency(earnings)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                    {isWorking ? 
+                      `Ganhando agora.` :
+                      `Fora do expediente. O contador está pausado.`
+                    }
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base font-medium">
-                            <Briefcase className="h-5 w-5 text-primary" />
-                            Progresso do Expediente
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center space-y-4 pt-2">
-                        <div className="text-center">
-                            <p className="font-semibold text-lg">{currentTime.toLocaleTimeString('pt-BR')}</p>
-                            <p className="text-sm text-muted-foreground">{currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base font-medium">
+                        <Briefcase className="h-5 w-5 text-primary" />
+                        Progresso do Expediente
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center space-y-4 pt-2">
+                    <div className="text-center">
+                        <p className="font-semibold text-lg">{currentTime.toLocaleTimeString('pt-BR')}</p>
+                        <p className="text-sm text-muted-foreground">{currentTime.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                   <div className="w-full space-y-2">
+                     <div className="flex justify-between text-sm font-medium text-muted-foreground">
+                        <span>Início: {financialData.workStartTime}</span>
+                        <span>Fim: {financialData.workEndTime}</span>
+                     </div>
+                     <Progress value={workdayProgress} className="w-full h-3" />
+                     <p className="text-center text-lg font-bold text-foreground">
+                        {workdayProgress.toFixed(0)}%
+                     </p>
+                   </div>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        Resumo Financeiro
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
+                        <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
+                             <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
                         </div>
-                       <div className="w-full space-y-2">
-                         <div className="flex justify-between text-sm font-medium text-muted-foreground">
-                            <span>Início: {financialData.workStartTime}</span>
-                            <span>Fim: {financialData.workEndTime}</span>
-                         </div>
-                         <Progress value={workdayProgress} className="w-full h-3" />
-                         <p className="text-center text-lg font-bold text-foreground">
-                            {workdayProgress.toFixed(0)}%
-                         </p>
-                       </div>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-primary" />
-                            Resumo Financeiro
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
-                            <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
+                         <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
+                             <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
                         </div>
-                        <Separator />
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
-                                 <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
-                                 <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
-                                 <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
-                            </div>
+                         <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
+                             <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </CardContent>
+            </Card>
             
             <ExpenseTracker 
               expenses={expenses} 
