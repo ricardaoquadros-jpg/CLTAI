@@ -6,10 +6,11 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
 
 const SECONDS_IN = {
   hourly: 3600,
@@ -52,9 +53,15 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
   
   const [earnings, setEarnings] = useState(0);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
     setIsClient(true);
+    const timer = setInterval(() => {
+        setCurrentTime(new Date().toLocaleTimeString('pt-BR'));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const earningsPerSecond = useMemo(() => {
@@ -166,35 +173,59 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-primary" />
-                        Resumo Financeiro
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
-                        <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
-                    </div>
-                    <Separator />
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
-                        <div className="flex flex-col items-center sm:items-start">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
-                             <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base font-medium">
+                            <Clock className="h-5 w-5 text-primary" />
+                            Data e Hora
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={setDate}
+                            className="rounded-md border p-0"
+                            lang="pt-BR"
+                        />
+                        {currentTime && (
+                             <p className="text-3xl font-bold tracking-tighter mt-4 text-foreground">
+                                {currentTime}
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-primary" />
+                            Resumo Financeiro
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Patrimônio Líquido</p>
+                            <p className="text-3xl font-bold">{formatCurrency(netWorth)}</p>
                         </div>
-                         <div className="flex flex-col items-center sm:items-start">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
-                             <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
+                        <Separator />
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
+                                 <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
+                            </div>
+                             <div className="flex items-center justify-between">
+                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
+                                 <p className="font-semibold">{formatCurrency(financialData.investments)}</p>
+                            </div>
+                             <div className="flex items-center justify-between">
+                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
+                                 <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
+                            </div>
                         </div>
-                         <div className="flex flex-col items-center sm:items-start">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
-                             <p className="font-semibold">{formatCurrency(totalExpenses)}</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
             
             <ExpenseTracker 
               expenses={expenses} 
