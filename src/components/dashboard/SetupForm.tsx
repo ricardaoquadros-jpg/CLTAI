@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
-import React, { useState, useEffect } from 'react';
-import { startOfMonth, isSameDay } from 'date-fns';
+import React, { useState, useEffect, useMemo } from 'react';
+import { startOfMonth, isSameDay, parse } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Separator } from '../ui/separator';
+import { CalendarDays, Clock } from 'lucide-react';
 
 
 const formSchema = z.object({
@@ -64,6 +66,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   });
 
   const selectedWeekDays = form.watch('workDays');
+  const workStartTime = form.watch('workStartTime');
+  const workEndTime = form.watch('workEndTime');
 
   useEffect(() => {
     const dates: Date[] = [];
@@ -112,6 +116,27 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       workDays: finalWorkDays,
     });
   }
+
+  const totalWorkHours = useMemo(() => {
+    if (!workStartTime || !workEndTime || selectedDates.length === 0) {
+      return 0;
+    }
+    try {
+      const start = parse(workStartTime, 'HH:mm', new Date());
+      let end = parse(workEndTime, 'HH:mm', new Date());
+
+      if (end < start) { // overnight shift
+        end.setDate(end.getDate() + 1);
+      }
+      
+      const diffMs = end.getTime() - start.getTime();
+      const hoursPerDay = diffMs / (1000 * 60 * 60);
+
+      return hoursPerDay * selectedDates.length;
+    } catch (e) {
+      return 0;
+    }
+  }, [workStartTime, workEndTime, selectedDates]);
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -236,6 +261,21 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     month={startOfMonth(new Date())}
                   />
                </div>
+               <Card className="bg-secondary/50">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Total de dias de trabalho</p>
+                      <p className="font-semibold text-lg">{selectedDates.length}</p>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Clock className="h-4 w-4" /> Total de horas de trabalho</p>
+                      <p className="font-semibold text-lg">{totalWorkHours.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+               </Card>
               <FormField
                 control={form.control}
                 name="bankBalance"
