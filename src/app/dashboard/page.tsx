@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { startOfDay, endOfDay, setHours, setMinutes, setSeconds, parse } from 'date-fns';
+import { parse } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -20,7 +20,21 @@ const AVG_DAYS_IN_MONTH = 30.44;
 const AVG_BUSINESS_DAYS_IN_MONTH = 22;
 
 
-function isDuringWorkHours(workDays: number[], startTime: string, endTime: string): boolean {
+function isDuringBreakHours(breakStartTime?: string, breakEndTime?: string): boolean {
+  if (!breakStartTime || !breakEndTime) {
+    return false;
+  }
+  try {
+    const now = new Date();
+    const breakStart = parse(breakStartTime, 'HH:mm', new Date());
+    const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
+    return now >= breakStart && now <= breakEnd;
+  } catch (e) {
+    return false;
+  }
+}
+
+function isDuringWorkHours(workDays: number[], startTime: string, endTime: string, breakStartTime?: string, breakEndTime?: string): boolean {
     if (!workDays || workDays.length === 0) {
       return false;
     }
@@ -28,6 +42,10 @@ function isDuringWorkHours(workDays: number[], startTime: string, endTime: strin
     const currentDay = now.getDay();
     
     if (!workDays.includes(currentDay)) {
+        return false;
+    }
+    
+    if (isDuringBreakHours(breakStartTime, breakEndTime)) {
         return false;
     }
 
@@ -85,17 +103,17 @@ export default function DashboardPage() {
       return;
     }
     
-    const { workDays, startTime, endTime } = financialData;
+    const { workDays, startTime, endTime, breakStartTime, breakEndTime } = financialData;
 
     const calculateInitialState = () => {
-      const isWorking = isDuringWorkHours(workDays, startTime, endTime);
+      const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
       const now = new Date();
       
       const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
       const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
       
       let progress = 0;
-      if(isWorking){
+      if(isDuringWorkHours(workDays, startTime, endTime)){
           const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
           const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
           progress = (elapsedDuration / totalDuration) * 100;
@@ -105,8 +123,20 @@ export default function DashboardPage() {
 
       if (isWorking) {
         const elapsedSecondsToday = (now.getTime() - startOfWorkDay.getTime()) / 1000;
+        let breakSeconds = 0;
+
+        if (breakStartTime && breakEndTime) {
+            const breakStart = parse(breakStartTime, 'HH:mm', new Date());
+            const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
+            if (now > breakEnd) {
+                breakSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
+            } else if (now > breakStart) {
+                breakSeconds = (now.getTime() - breakStart.getTime()) / 1000;
+            }
+        }
+
         const potentialWorkSecondsToday = financialData.hoursPerDay * SECONDS_IN_HOUR;
-        const workedSeconds = Math.min(elapsedSecondsToday, potentialWorkSecondsToday);
+        const workedSeconds = Math.min(elapsedSecondsToday - breakSeconds, potentialWorkSecondsToday);
 
         if (workedSeconds > 0) {
             setEarnings(workedSeconds * earningsPerSecond);
@@ -119,7 +149,7 @@ export default function DashboardPage() {
     calculateInitialState(); 
 
     const timer = setInterval(() => {
-      const isWorking = isDuringWorkHours(workDays, startTime, endTime);
+      const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
       if (financialData && isWorking) {
          setEarnings((prev) => prev + earningsPerSecond);
       }
@@ -128,7 +158,7 @@ export default function DashboardPage() {
       const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
       const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
 
-      if (!isWorking) {
+      if (!isDuringWorkHours(workDays, startTime, endTime)) {
           setWorkdayProgress(0);
       } else {
           const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
@@ -199,7 +229,8 @@ export default function DashboardPage() {
     setEarnings(0);
   }
 
-  const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime);
+  const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
+  const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + financialData.investments;
 
   return (
@@ -229,8 +260,10 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                           {isWorking ? 
-                          `Ganhando agora.` :
-                          `Fora do expediente. O contador está pausado.`
+                            `Ganhando agora.` :
+                            inBreak ? 
+                            `Em horário de intervalo. O contador está pausado.` :
+                            `Fora do expediente. O contador está pausado.`
                           }
                       </p>
                   </CardContent>
