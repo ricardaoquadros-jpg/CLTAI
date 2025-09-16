@@ -6,11 +6,12 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Clock } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Clock, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Calendar } from '@/components/ui/calendar';
+import { Progress } from '@/components/ui/progress';
+
 
 const SECONDS_IN = {
   hourly: 3600,
@@ -18,6 +19,13 @@ const SECONDS_IN = {
   monthly_business_days: 22 * 8 * 3600,
   monthly: 30.44 * 24 * 3600,
 };
+
+function parseTimeToDate(timeStr: string): Date {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+}
 
 function isDuringWorkHours(startTime: string, endTime: string, workDays: number[]): boolean {
     if (!startTime || !endTime || !workDays || workDays.length === 0) {
@@ -30,13 +38,8 @@ function isDuringWorkHours(startTime: string, endTime: string, workDays: number[
         return false;
     }
 
-    const start = new Date();
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    start.setHours(startHours, startMinutes, 0, 0);
-
-    const end = new Date();
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    end.setHours(endHours, endMinutes, 0, 0);
+    const start = parseTimeToDate(startTime);
+    const end = parseTimeToDate(endTime);
     
     // Handle overnight shifts
     if (end < start) {
@@ -53,17 +56,12 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
   
   const [earnings, setEarnings] = useState(0);
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [currentTime, setCurrentTime] = useState('');
+  const [workdayProgress, setWorkdayProgress] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
-    const timer = setInterval(() => {
-        setCurrentTime(new Date().toLocaleTimeString('pt-BR'));
-    }, 1000);
-    return () => clearInterval(timer);
   }, []);
-
+  
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.income) return 0;
     const { amount, frequency } = financialData.income;
@@ -75,9 +73,33 @@ export default function DashboardPage() {
       return;
     }
     const timer = setInterval(() => {
-      if (financialData && isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays)) {
+      const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
+      if (financialData && isWorking) {
          setEarnings((prev) => prev + earningsPerSecond);
       }
+       // Calculate workday progress
+      const now = new Date();
+      const start = parseTimeToDate(financialData.workStartTime);
+      let end = parseTimeToDate(financialData.workEndTime);
+
+      if (end < start) { // overnight shift
+        end.setDate(end.getDate() + 1);
+        if (now < start) {
+          now.setDate(now.getDate() + 1);
+        }
+      }
+
+      if (now < start || !isWorking) {
+          setWorkdayProgress(0);
+      } else if (now > end) {
+          setWorkdayProgress(100);
+      } else {
+          const totalDuration = end.getTime() - start.getTime();
+          const elapsedDuration = now.getTime() - start.getTime();
+          const progress = (elapsedDuration / totalDuration) * 100;
+          setWorkdayProgress(progress);
+      }
+
     }, 1000);
 
     return () => clearInterval(timer);
@@ -166,7 +188,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                     {isWorking ? 
-                      `Ganhando agora. Expediente: ${financialData.workStartTime} - ${financialData.workEndTime}` :
+                      `Ganhando agora.` :
                       `Fora do expediente. O contador está pausado.`
                     }
                 </p>
@@ -177,23 +199,21 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base font-medium">
-                            <Clock className="h-5 w-5 text-primary" />
-                            Data e Hora
+                            <Briefcase className="h-5 w-5 text-primary" />
+                            Progresso do Expediente
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            className="rounded-md border p-0"
-                            lang="pt-BR"
-                        />
-                        {currentTime && (
-                             <p className="text-3xl font-bold tracking-tighter mt-4 text-foreground">
-                                {currentTime}
-                            </p>
-                        )}
+                    <CardContent className="flex flex-col items-center space-y-4 pt-2">
+                       <div className="w-full space-y-2">
+                         <div className="flex justify-between text-sm font-medium text-muted-foreground">
+                            <span>Início: {financialData.workStartTime}</span>
+                            <span>Fim: {financialData.workEndTime}</span>
+                         </div>
+                         <Progress value={workdayProgress} className="w-full h-3" />
+                         <p className="text-center text-lg font-bold text-foreground">
+                            {workdayProgress.toFixed(0)}%
+                         </p>
+                       </div>
                     </CardContent>
                 </Card>
                  <Card>
