@@ -11,7 +11,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 export default function Home() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [userName, setUserName] = useLocalStorage<string | null>('userName', null);
+  const [, setUserName] = useLocalStorage<string | null>('userName', null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,7 +41,7 @@ export default function Home() {
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
             <h1 className="text-3xl font-bold text-foreground font-headline">
-                CLT AI
+                Financial Glimpse
             </h1>
         </div>
         <Card className="shadow-lg">
