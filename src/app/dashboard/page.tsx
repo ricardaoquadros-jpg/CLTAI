@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
   
-  const [dailyEarnings, setDailyEarnings] = useState(0);
+  const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -102,65 +102,60 @@ export default function DashboardPage() {
     if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime) {
       return;
     }
-    
+
     const { workDays, startTime, endTime, breakStartTime, breakEndTime } = financialData;
-    const dailyTotal = earningsPerSecond * financialData.hoursPerDay * SECONDS_IN_HOUR;
-    
-    const calculateInitialState = () => {
+
+    const calculateEarnings = () => {
       const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
       const now = new Date();
-      
       const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
       const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
-      
+
+      let elapsedSeconds = 0;
       let progress = 0;
-      if(isDuringWorkHours(workDays, startTime, endTime)){
-          const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
-          const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
-          progress = (elapsedDuration / totalDuration) * 100;
+
+      if (now > startOfWorkDay && now <= endOfWorkDay && isWorking) {
+        elapsedSeconds = (now.getTime() - startOfWorkDay.getTime()) / 1000;
+        
+        if (breakStartTime && breakEndTime) {
+            const breakStart = parse(breakStartTime, 'HH:mm', new Date());
+            const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
+
+            if (now > breakEnd) {
+                const breakDurationSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
+                elapsedSeconds -= breakDurationSeconds;
+            } else if (now > breakStart) {
+                elapsedSeconds -= (now.getTime() - breakStart.getTime()) / 1000;
+            }
+        }
+        
+        setRealTimeEarnings(elapsedSeconds * earningsPerSecond);
+        
+        const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
+        const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
+        progress = (elapsedDuration / totalDuration) * 100;
+
+      } else if (now > endOfWorkDay && workDays.includes(now.getDay())) {
+         let totalWorkSeconds = financialData.hoursPerDay * SECONDS_IN_HOUR;
+         setRealTimeEarnings(totalWorkSeconds * earningsPerSecond);
+         progress = 100;
+      } else {
+        setRealTimeEarnings(0);
+        progress = 0;
       }
       
       setWorkdayProgress(progress > 100 ? 100 : progress);
-
-      if (isWorking) {
-        setDailyEarnings(dailyTotal);
-      } else {
-        setDailyEarnings(0);
-      }
     };
 
-    calculateInitialState(); 
-
-    const timer = setInterval(() => {
-      const isWorking = isDuringWorkHours(workDays, startTime, endTime, breakStartTime, breakEndTime);
-      if (isWorking) {
-         setDailyEarnings(dailyTotal);
-      } else {
-        setDailyEarnings(0);
-      }
-      
-      const now = new Date();
-      const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
-      const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
-
-      if (!isDuringWorkHours(workDays, startTime, endTime)) {
-          setWorkdayProgress(0);
-      } else {
-          const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
-          const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
-          const progress = (elapsedDuration / totalDuration) * 100;
-          setWorkdayProgress(progress > 100 ? 100 : progress);
-      }
-
-    }, 1000);
+    calculateEarnings();
+    const timer = setInterval(calculateEarnings, 1000);
 
     return () => clearInterval(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financialData, earningsPerSecond]);
 
   const handleSetupComplete = (data: FinancialData) => {
     setFinancialData(data);
-    setDailyEarnings(0);
+    setRealTimeEarnings(0);
     setWorkdayProgress(0);
   };
   
@@ -211,12 +206,13 @@ export default function DashboardPage() {
   const handleReset = () => {
     setFinancialData(null);
     setExpenses([]);
-    setDailyEarnings(0);
+    setRealTimeEarnings(0);
   }
 
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + financialData.investments;
+  const totalDailyEarnings = financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -236,18 +232,18 @@ export default function DashboardPage() {
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
-                      Ganhos do Dia
+                      Ganhos do Dia (Tempo Real)
                       </CardTitle>
                   </CardHeader>
                   <CardContent className="pb-6">
                       <p className="text-5xl font-bold tracking-tighter text-primary">
-                          {formatCurrency(dailyEarnings)}
+                          {formatRealTimeCurrency(realTimeEarnings)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                           {isWorking ? 
-                            `Ganhos de hoje com base na sua carga horária.` :
+                            `Ganhos acumulados até agora.` :
                             inBreak ? 
-                            `Em horário de intervalo.` :
+                            `Em horário de intervalo. Ganhos pausados.` :
                             `Fora do expediente.`
                           }
                       </p>
@@ -294,6 +290,10 @@ export default function DashboardPage() {
                     </div>
                     <Separator />
                     <div className="space-y-4">
+                         <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Ganho Diário Total</p>
+                             <p className="font-semibold">{formatCurrency(totalDailyEarnings)}</p>
+                        </div>
                         <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
                              <p className="font-semibold">{formatCurrency(financialData.bankBalance)}</p>
