@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import type { FinancialData, Expense, IncomeFrequency } from '@/lib/types';
+import type { FinancialData, Expense, SalaryFrequency } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
@@ -65,9 +65,9 @@ export default function DashboardPage() {
   }, []);
   
   const earningsPerSecond = useMemo(() => {
-    if (!financialData?.income) return 0;
-    const { amount, frequency } = financialData.income;
-    const { workStartTime, workEndTime, workDays } = financialData;
+    if (!financialData?.salary) return 0;
+    const { amount, frequency } = financialData.salary;
+    const { workStartTime, workEndTime } = financialData;
 
     try {
         const start = parse(workStartTime, 'HH:mm', new Date());

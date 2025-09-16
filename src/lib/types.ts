@@ -1,8 +1,8 @@
-export type IncomeFrequency = 'hourly' | 'daily' | 'monthly_business_days' | 'monthly' | 'monthly_work_hours';
+export type SalaryFrequency = 'hourly' | 'daily' | 'monthly_business_days' | 'monthly' | 'monthly_work_hours';
 
-export interface Income {
+export interface Salary {
   amount: number;
-  frequency: IncomeFrequency;
+  frequency: SalaryFrequency;
 }
 
 export interface Expense {
@@ -13,7 +13,7 @@ export interface Expense {
 }
 
 export interface FinancialData {
-  income: Income;
+  salary: Salary;
   bankBalance: number;
   investments: number;
   workStartTime: string; // HH:mm format

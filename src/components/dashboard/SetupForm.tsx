@@ -27,8 +27,8 @@ import { CalendarDays, Clock } from 'lucide-react';
 
 
 const formSchema = z.object({
-  incomeAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
-  incomeFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly', 'monthly_work_hours']),
+  salaryAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
+  salaryFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
   workStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: "Formato de hora inválido. Use HH:mm." }),
@@ -55,8 +55,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      incomeAmount: 5000,
-      incomeFrequency: 'monthly',
+      salaryAmount: 5000,
+      salaryFrequency: 'monthly',
       bankBalance: 1000,
       investments: 0,
       workStartTime: '09:00',
@@ -126,9 +126,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
 
     onSetupComplete({
-      income: {
-        amount: values.incomeAmount,
-        frequency: values.incomeFrequency as FinancialData['income']['frequency'],
+      salary: {
+        amount: values.salaryAmount,
+        frequency: values.salaryFrequency as FinancialData['salary']['frequency'],
       },
       bankBalance: values.bankBalance,
       investments: values.investments,
@@ -155,24 +155,24 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
               <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="incomeAmount"
+                  name="salaryAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor da Renda</FormLabel>
+                      <FormLabel>Valor do Salário</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="5000" {...field} />
                       </FormControl>
-                      <FormDescription>Sua renda antes dos impostos.</FormDescription>
+                      <FormDescription>Seu salário antes dos impostos.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="incomeFrequency"
+                  name="salaryFrequency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Frequência da Renda</FormLabel>
+                      <FormLabel>Frequência do Salário</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -212,7 +212,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>Com que frequência você recebe essa renda.</FormDescription>
+                      <FormDescription>Com que frequência você recebe seu salário.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
