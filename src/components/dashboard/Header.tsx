@@ -1,22 +1,7 @@
 'use client';
 import React from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '../ui/button';
-import { LogOut } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 const Header = () => {
-  const router = useRouter();
-  const { toast } = useToast();
-
-  const handleLogout = () => {
-    toast({
-      title: 'Desconectado',
-      description: 'Você foi desconectado com sucesso.',
-    });
-    router.push('/login');
-  };
-
   return (
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between">
@@ -40,10 +25,6 @@ const Header = () => {
               CLT AI
             </h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
         </div>
     </header>
   );
