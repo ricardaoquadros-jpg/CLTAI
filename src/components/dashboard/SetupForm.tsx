@@ -5,7 +5,7 @@ import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
 import React, { useState, useEffect, useMemo } from 'react';
-import { startOfMonth, isSameDay } from 'date-fns';
+import { startOfMonth, isSameDay, differenceInMinutes } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +31,8 @@ const formSchema = z.object({
   salaryFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   hoursPerDay: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }).max(24, { message: 'As horas não podem exceder 24.'}),
   workDays: z.array(z.number()).min(1, { message: "Você precisa selecionar pelo menos um dia de trabalho." }),
 });
@@ -58,6 +60,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       salaryFrequency: 'monthly',
       bankBalance: 1000,
       investments: 0,
+      startTime: '09:00',
+      endTime: '17:00',
       hoursPerDay: 8,
       workDays: ["1", "2", "3", "4", "5"].map(Number), // Default to Mon-Fri
     },
@@ -65,6 +69,33 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
 
   const selectedWeekDays = form.watch('workDays');
   const hoursPerDay = form.watch('hoursPerDay');
+  const startTime = form.watch('startTime');
+  const endTime = form.watch('endTime');
+
+  useEffect(() => {
+    try {
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
+      
+      const startDate = new Date(0, 0, 0, startHour, startMinute);
+      const endDate = new Date(0, 0, 0, endHour, endMinute);
+
+      let diff = differenceInMinutes(endDate, startDate);
+      if (diff < 0) {
+        // handles overnight shifts
+        diff += 24 * 60;
+      }
+      
+      const hours = diff / 60;
+      if (hours > 0 && hours !== hoursPerDay) {
+        form.setValue('hoursPerDay', parseFloat(hours.toFixed(2)));
+      }
+    } catch (e) {
+      // Ignore errors from invalid time formats during input
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startTime, endTime, form.setValue]);
+
 
   useEffect(() => {
     const dates: Date[] = [];
@@ -115,6 +146,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       },
       bankBalance: values.bankBalance,
       investments: values.investments,
+      startTime: values.startTime,
+      endTime: values.endTime,
       hoursPerDay: values.hoursPerDay,
       workDays: finalWorkDays,
       totalWorkHoursInMonth: totalWorkHours,
@@ -241,6 +274,37 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     month={startOfMonth(new Date())}
                   />
                </div>
+               <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Início do Expediente</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormDescription>A hora que você começa a trabalhar.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fim do Expediente</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormDescription>A hora que você para de trabalhar.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
                 <FormField
                   control={form.control}
                   name="hoursPerDay"
@@ -250,7 +314,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                       <FormControl>
                         <Input type="number" placeholder="8" {...field} />
                       </FormControl>
-                      <FormDescription>Quantas horas você trabalha por dia.</FormDescription>
+                      <FormDescription>Quantas horas você trabalha por dia. Calculado automaticamente.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

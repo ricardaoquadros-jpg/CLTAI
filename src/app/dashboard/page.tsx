@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { startOfDay, endOfDay } from 'date-fns';
+import { startOfDay, endOfDay, setHours, setMinutes, setSeconds, parse } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -20,14 +20,24 @@ const AVG_DAYS_IN_MONTH = 30.44;
 const AVG_BUSINESS_DAYS_IN_MONTH = 22;
 
 
-function isDuringWorkHours(workDays: number[]): boolean {
+function isDuringWorkHours(workDays: number[], startTime: string, endTime: string): boolean {
     if (!workDays || workDays.length === 0) {
       return false;
     }
     const now = new Date();
     const currentDay = now.getDay();
     
-    return workDays.includes(currentDay);
+    if (!workDays.includes(currentDay)) {
+        return false;
+    }
+
+    try {
+        const start = parse(startTime, 'HH:mm', new Date());
+        const end = parse(endTime, 'HH:mm', new Date());
+        return now >= start && now <= end;
+    } catch (e) {
+        return false;
+    }
 }
 
 export default function DashboardPage() {
@@ -71,27 +81,30 @@ export default function DashboardPage() {
   }, [financialData]);
 
   useEffect(() => {
-    if (!financialData || !financialData.workDays) {
+    if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime) {
       return;
     }
+    
+    const { workDays, startTime, endTime } = financialData;
 
     const calculateInitialState = () => {
-      const isWorking = isDuringWorkHours(financialData.workDays);
+      const isWorking = isDuringWorkHours(workDays, startTime, endTime);
       const now = new Date();
-      const startOfToday = startOfDay(now);
-      const endOfToday = endOfDay(now);
+      
+      const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
+      const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
       
       let progress = 0;
       if(isWorking){
-          const totalDuration = endOfToday.getTime() - startOfToday.getTime();
-          const elapsedDuration = now.getTime() - startOfToday.getTime();
+          const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
+          const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
           progress = (elapsedDuration / totalDuration) * 100;
       }
       
       setWorkdayProgress(progress > 100 ? 100 : progress);
 
       if (isWorking) {
-        const elapsedSecondsToday = (now.getTime() - startOfToday.getTime()) / 1000;
+        const elapsedSecondsToday = (now.getTime() - startOfWorkDay.getTime()) / 1000;
         const potentialWorkSecondsToday = financialData.hoursPerDay * SECONDS_IN_HOUR;
         const workedSeconds = Math.min(elapsedSecondsToday, potentialWorkSecondsToday);
 
@@ -106,20 +119,20 @@ export default function DashboardPage() {
     calculateInitialState(); 
 
     const timer = setInterval(() => {
-      const isWorking = isDuringWorkHours(financialData.workDays);
+      const isWorking = isDuringWorkHours(workDays, startTime, endTime);
       if (financialData && isWorking) {
          setEarnings((prev) => prev + earningsPerSecond);
       }
       
       const now = new Date();
-      const startOfToday = startOfDay(now);
-      const endOfToday = endOfDay(now);
+      const startOfWorkDay = parse(startTime, 'HH:mm', new Date());
+      const endOfWorkDay = parse(endTime, 'HH:mm', new Date());
 
       if (!isWorking) {
           setWorkdayProgress(0);
       } else {
-          const totalDuration = endOfToday.getTime() - startOfToday.getTime();
-          const elapsedDuration = now.getTime() - startOfToday.getTime();
+          const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
+          const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
           const progress = (elapsedDuration / totalDuration) * 100;
           setWorkdayProgress(progress > 100 ? 100 : progress);
       }
@@ -186,7 +199,7 @@ export default function DashboardPage() {
     setEarnings(0);
   }
 
-  const isWorking = isDuringWorkHours(financialData.workDays);
+  const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime);
   const netWorth = financialData.bankBalance + financialData.investments;
 
   return (
@@ -239,8 +252,8 @@ export default function DashboardPage() {
                     </div>
                    <div className="w-full space-y-2">
                      <div className="flex justify-between text-sm font-medium text-muted-foreground">
-                        <span>Início: 00:00</span>
-                        <span>Fim: 23:59</span>
+                        <span>Início: {financialData.startTime}</span>
+                        <span>Fim: {financialData.endTime}</span>
                      </div>
                      <Progress value={workdayProgress} className="w-full h-3" />
                      <p className="text-center text-lg font-bold text-foreground">
