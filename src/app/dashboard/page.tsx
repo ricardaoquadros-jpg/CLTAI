@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -112,6 +112,10 @@ export default function DashboardPage() {
       if (!financialData) return 0;
       return financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
   }, [financialData, earningsPerSecond]);
+
+  const earningsPerHour = useMemo(() => {
+    return earningsPerSecond * SECONDS_IN_HOUR;
+  }, [earningsPerSecond]);
 
   useEffect(() => {
     if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime) {
@@ -249,6 +253,7 @@ export default function DashboardPage() {
   const formattedRealTimeMonthEarnings = formatRealTimeCurrency(realTimeMonthEarnings);
   const formattedNetWorth = formatCurrency(netWorth);
   const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
+  const formattedEarningsPerHour = formatCurrency(earningsPerHour);
   const formattedBankBalance = formatCurrency(financialData.bankBalance);
   const formattedInvestments = formatCurrency(financialData.investments);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
@@ -368,6 +373,14 @@ export default function DashboardPage() {
                              </p>
                         </div>
                         <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Hourglass className="h-4 w-4" /> Ganho por Hora</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedEarningsPerHour}>
+                                 {formattedEarningsPerHour}
+                               </PrivacyWrapper>
+                             </p>
+                        </div>
+                        <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
@@ -406,3 +419,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
