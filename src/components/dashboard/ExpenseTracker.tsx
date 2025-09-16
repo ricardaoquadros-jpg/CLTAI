@@ -1,0 +1,113 @@
+'use client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import type { Expense } from '@/lib/types';
+
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '../ui/scroll-area';
+import { formatCurrency } from '@/lib/utils';
+import { PlusCircle, Trash2 } from 'lucide-react';
+
+const formSchema = z.object({
+  description: z.string().min(2, { message: 'Description must be at least 2 characters.' }),
+  amount: z.coerce.number().positive({ message: 'Please enter a positive amount.' }),
+});
+
+interface ExpenseTrackerProps {
+  expenses: Expense[];
+  onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
+  onDeleteExpense: (id: string) => void;
+}
+
+export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: ExpenseTrackerProps) {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      description: '',
+      amount: 0,
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    onAddExpense(values);
+    form.reset();
+  }
+  
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  return (
+    <Card className="col-span-1 lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Expense Tracker</CardTitle>
+        <CardDescription>Log and view your expenses for this month. Total: {formatCurrency(totalExpenses)}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
+            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Coffee, Rent" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Amount" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <Button type="submit" className="w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add
+            </Button>
+          </form>
+        </Form>
+        <ScrollArea className="h-64 pr-4">
+          <div className="space-y-4">
+            {expenses.length > 0 ? (
+              expenses.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
+                  <div>
+                    <p className="font-medium">{expense.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(expense.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onDeleteExpense(expense.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <p>No expenses logged for this month.</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}

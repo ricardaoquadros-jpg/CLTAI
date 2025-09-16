@@ -1,0 +1,19 @@
+export type IncomeFrequency = 'hourly' | 'daily' | 'monthly_business_days' | 'monthly';
+
+export interface Income {
+  amount: number;
+  frequency: IncomeFrequency;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+}
+
+export interface FinancialData {
+  income: Income;
+  bankBalance: number;
+  investments: number;
+}
