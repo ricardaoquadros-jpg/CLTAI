@@ -16,8 +16,7 @@ export interface FinancialData {
   salary: Salary;
   bankBalance: number;
   investments: number;
-  workStartTime: string; // HH:mm format
-  workEndTime: string;   // HH:mm format
+  hoursPerDay: number;   // Number of hours worked per day
   workDays: number[];    // Array of numbers 0 (Sun) to 6 (Sat)
   totalWorkHoursInMonth?: number;
 }

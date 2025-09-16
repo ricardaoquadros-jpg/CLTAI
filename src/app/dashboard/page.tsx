@@ -1,17 +1,17 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import type { FinancialData, Expense, SalaryFrequency } from '@/lib/types';
+import type { FinancialData, Expense } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Clock, Briefcase } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { parse } from 'date-fns';
+import { startOfDay, endOfDay } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -19,34 +19,15 @@ const SECONDS_IN_DAY = 86400;
 const AVG_DAYS_IN_MONTH = 30.44;
 const AVG_BUSINESS_DAYS_IN_MONTH = 22;
 
-function parseTimeToDate(timeStr: string): Date {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-}
 
-function isDuringWorkHours(startTime: string, endTime: string, workDays: number[]): boolean {
-    if (!startTime || !endTime || !workDays || workDays.length === 0) {
+function isDuringWorkHours(workDays: number[]): boolean {
+    if (!workDays || workDays.length === 0) {
       return false;
     }
     const now = new Date();
     const currentDay = now.getDay();
     
-    if (!workDays.includes(currentDay)) {
-        return false;
-    }
-
-    const start = parseTimeToDate(startTime);
-    const end = parseTimeToDate(endTime);
-    
-    // Handle overnight shifts
-    if (end < start) {
-        // If current time is after start or before end (on the next day)
-        return now >= start || now <= end;
-    }
-
-    return now >= start && now <= end;
+    return workDays.includes(currentDay);
 }
 
 export default function DashboardPage() {
@@ -67,14 +48,9 @@ export default function DashboardPage() {
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.salary) return 0;
     const { amount, frequency } = financialData.salary;
-    const { workStartTime, workEndTime } = financialData;
+    const { hoursPerDay } = financialData;
 
     try {
-        const start = parse(workStartTime, 'HH:mm', new Date());
-        let end = parse(workEndTime, 'HH:mm', new Date());
-        if (end < start) { end.setDate(end.getDate() + 1); }
-        const hoursPerDay = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-
         switch (frequency) {
             case 'hourly':
                 return amount / SECONDS_IN_HOUR;
@@ -95,77 +71,57 @@ export default function DashboardPage() {
   }, [financialData]);
 
   useEffect(() => {
-    if (!financialData || !financialData.workStartTime || !financialData.workEndTime || !financialData.workDays) {
+    if (!financialData || !financialData.workDays) {
       return;
     }
 
     const calculateInitialState = () => {
-      const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
+      const isWorking = isDuringWorkHours(financialData.workDays);
       const now = new Date();
-      const start = parseTimeToDate(financialData.workStartTime);
-      let end = parseTimeToDate(financialData.workEndTime);
-
-      if (end < start) { // overnight shift
-        end.setDate(end.getDate() + 1);
-        if (now < start) {
-          now.setDate(now.getDate() + 1);
-        }
-      }
-
+      const startOfToday = startOfDay(now);
+      const endOfToday = endOfDay(now);
+      
       let progress = 0;
-      if (now >= start && isWorking) {
-        if (now > end) {
-          progress = 100;
-        } else {
-          const totalDuration = end.getTime() - start.getTime();
-          const elapsedDuration = now.getTime() - start.getTime();
+      if(isWorking){
+          const totalDuration = endOfToday.getTime() - startOfToday.getTime();
+          const elapsedDuration = now.getTime() - startOfToday.getTime();
           progress = (elapsedDuration / totalDuration) * 100;
-        }
       }
-
+      
       setWorkdayProgress(progress > 100 ? 100 : progress);
 
       if (isWorking) {
-        const totalWorkdaySeconds = (end.getTime() - start.getTime()) / 1000;
-        const elapsedSeconds = (now.getTime() - start.getTime()) / 1000;
-        if (elapsedSeconds > 0 && elapsedSeconds <= totalWorkdaySeconds) {
-            setEarnings(elapsedSeconds * earningsPerSecond);
-        } else if (elapsedSeconds > totalWorkdaySeconds) {
-            setEarnings(totalWorkdaySeconds * earningsPerSecond);
+        const elapsedSecondsToday = (now.getTime() - startOfToday.getTime()) / 1000;
+        const potentialWorkSecondsToday = financialData.hoursPerDay * SECONDS_IN_HOUR;
+        const workedSeconds = Math.min(elapsedSecondsToday, potentialWorkSecondsToday);
+
+        if (workedSeconds > 0) {
+            setEarnings(workedSeconds * earningsPerSecond);
         } else {
             setEarnings(0);
         }
       }
     };
 
-    calculateInitialState(); // Calculate initial state on load
+    calculateInitialState(); 
 
     const timer = setInterval(() => {
-      const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
+      const isWorking = isDuringWorkHours(financialData.workDays);
       if (financialData && isWorking) {
          setEarnings((prev) => prev + earningsPerSecond);
       }
-       // Calculate workday progress
+      
       const now = new Date();
-      const start = parseTimeToDate(financialData.workStartTime);
-      let end = parseTimeToDate(financialData.workEndTime);
+      const startOfToday = startOfDay(now);
+      const endOfToday = endOfDay(now);
 
-      if (end < start) { // overnight shift
-        end.setDate(end.getDate() + 1);
-        if (now < start) {
-          now.setDate(now.getDate() + 1);
-        }
-      }
-
-      if (now < start || !isWorking) {
+      if (!isWorking) {
           setWorkdayProgress(0);
-      } else if (now > end) {
-          setWorkdayProgress(100);
       } else {
-          const totalDuration = end.getTime() - start.getTime();
-          const elapsedDuration = now.getTime() - start.getTime();
+          const totalDuration = endOfToday.getTime() - startOfToday.getTime();
+          const elapsedDuration = now.getTime() - startOfToday.getTime();
           const progress = (elapsedDuration / totalDuration) * 100;
-          setWorkdayProgress(progress);
+          setWorkdayProgress(progress > 100 ? 100 : progress);
       }
 
     }, 1000);
@@ -230,7 +186,7 @@ export default function DashboardPage() {
     setEarnings(0);
   }
 
-  const isWorking = isDuringWorkHours(financialData.workStartTime, financialData.workEndTime, financialData.workDays);
+  const isWorking = isDuringWorkHours(financialData.workDays);
   const netWorth = financialData.bankBalance + financialData.investments;
 
   return (
@@ -273,7 +229,7 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
                         <Briefcase className="h-5 w-5 text-primary" />
-                        Progresso do Expediente
+                        Progresso do Dia
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-4 pt-2">
@@ -283,8 +239,8 @@ export default function DashboardPage() {
                     </div>
                    <div className="w-full space-y-2">
                      <div className="flex justify-between text-sm font-medium text-muted-foreground">
-                        <span>Início: {financialData.workStartTime}</span>
-                        <span>Fim: {financialData.workEndTime}</span>
+                        <span>Início: 00:00</span>
+                        <span>Fim: 23:59</span>
                      </div>
                      <Progress value={workdayProgress} className="w-full h-3" />
                      <p className="text-center text-lg font-bold text-foreground">
