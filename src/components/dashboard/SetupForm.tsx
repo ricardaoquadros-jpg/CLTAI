@@ -19,10 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formSchema = z.object({
-  incomeAmount: z.coerce.number().positive({ message: 'Please enter a positive amount.' }),
+  incomeAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
   incomeFrequency: z.enum(['hourly', 'daily', 'monthly_business_days', 'monthly']),
-  bankBalance: z.coerce.number().nonnegative({ message: 'Balance cannot be negative.' }),
-  investments: z.coerce.number().nonnegative({ message: 'Investment cannot be negative.' }),
+  bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
+  investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
 });
 
 interface SetupFormProps {
@@ -33,9 +33,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      incomeAmount: 1000,
+      incomeAmount: 5000,
       incomeFrequency: 'monthly',
-      bankBalance: 0,
+      bankBalance: 1000,
       investments: 0,
     },
   });
@@ -55,9 +55,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Initial Setup</CardTitle>
+          <CardTitle className="font-headline text-2xl">Configuração Inicial</CardTitle>
           <CardDescription>
-            Let&apos;s get started by entering your current financial information.
+            Vamos começar inserindo suas informações financeiras atuais.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,11 +69,11 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   name="incomeAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Income Amount</FormLabel>
+                      <FormLabel>Valor da Renda</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="5000" {...field} />
                       </FormControl>
-                      <FormDescription>Your income before taxes.</FormDescription>
+                      <FormDescription>Sua renda antes dos impostos.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -83,21 +83,21 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   name="incomeFrequency"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Income Frequency</FormLabel>
+                      <FormLabel>Frequência da Renda</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select how often you get paid" />
+                            <SelectValue placeholder="Selecione a frequência do pagamento" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="monthly_business_days">Monthly (Business Days)</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="hourly">Hourly</SelectItem>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                          <SelectItem value="monthly_business_days">Mensal (Dias Úteis)</SelectItem>
+                          <SelectItem value="daily">Diário</SelectItem>
+                          <SelectItem value="hourly">Por Hora</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>How often you receive this income.</FormDescription>
+                      <FormDescription>Com que frequência você recebe essa renda.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -108,11 +108,11 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                 name="bankBalance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Bank Balance</FormLabel>
+                    <FormLabel>Saldo Bancário Atual</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="10000" {...field} />
                     </FormControl>
-                    <FormDescription>The total amount you have in your bank accounts.</FormDescription>
+                    <FormDescription>O valor total que você tem em suas contas bancárias.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -122,17 +122,17 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                 name="investments"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Total Investments</FormLabel>
+                    <FormLabel>Total de Investimentos</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="25000" {...field} />
                     </FormControl>
-                    <FormDescription>The total value of all your investments.</FormDescription>
+                    <FormDescription>O valor total de todos os seus investimentos.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button type="submit" size="lg" className="w-full">
-                Go to Dashboard
+                Ir para o Painel
               </Button>
             </form>
           </Form>

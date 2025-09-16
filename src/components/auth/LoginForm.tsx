@@ -11,8 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  email: z.string().email({ message: 'Por favor, insira um endereço de e-mail válido.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
 
 export function LoginForm() {
@@ -28,13 +28,13 @@ export function LoginForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('Login attempt with:', values);
+    console.log('Tentativa de login com:', values);
     toast({
-      title: 'Login Successful',
-      description: "Welcome back! You're being redirected to your dashboard.",
+      title: 'Login bem-sucedido',
+      description: "Bem-vindo de volta! Você está sendo redirecionado para o seu painel.",
     });
-    // In a real app, you would handle authentication here.
-    // For this mock, we'll just redirect.
+    // Em um aplicativo real, você lidaria com a autenticação aqui.
+    // Para este mock, vamos apenas redirecionar.
     router.push('/dashboard');
   }
 
@@ -48,7 +48,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="nome@exemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -59,7 +59,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Senha</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -69,7 +69,7 @@ export function LoginForm() {
         />
         <Button type="submit" className="w-full">
           <LogIn className="mr-2 h-4 w-4" />
-          Sign In
+          Entrar
         </Button>
       </form>
     </Form>

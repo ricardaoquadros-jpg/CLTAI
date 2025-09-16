@@ -13,8 +13,8 @@ import { formatCurrency } from '@/lib/utils';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 const formSchema = z.object({
-  description: z.string().min(2, { message: 'Description must be at least 2 characters.' }),
-  amount: z.coerce.number().positive({ message: 'Please enter a positive amount.' }),
+  description: z.string().min(2, { message: 'A descrição deve ter pelo menos 2 caracteres.' }),
+  amount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
 });
 
 interface ExpenseTrackerProps {
@@ -42,8 +42,8 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: Expe
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle>Expense Tracker</CardTitle>
-        <CardDescription>Log and view your expenses for this month. Total: {formatCurrency(totalExpenses)}</CardDescription>
+        <CardTitle>Controle de Despesas</CardTitle>
+        <CardDescription>Registre e visualize suas despesas para este mês. Total: {formatCurrency(totalExpenses)}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -54,9 +54,9 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: Expe
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="sr-only">Description</FormLabel>
+                    <FormLabel className="sr-only">Descrição</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Coffee, Rent" {...field} />
+                      <Input placeholder="ex: Café, Aluguel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -67,9 +67,9 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: Expe
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="sr-only">Amount</FormLabel>
+                    <FormLabel className="sr-only">Valor</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Amount" {...field} />
+                      <Input type="number" placeholder="Valor" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -77,7 +77,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: Expe
               />
             </div>
             <Button type="submit" className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
             </Button>
           </form>
         </Form>
@@ -102,7 +102,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense }: Expe
               ))
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                <p>No expenses logged for this month.</p>
+                <p>Nenhuma despesa registrada para este mês.</p>
               </div>
             )}
           </div>

@@ -4,10 +4,10 @@ import { LoginForm } from '@/components/auth/LoginForm';
 export default function LoginPage() {
   return (
     <AuthCard
-      title="Welcome Back"
-      description="Sign in to access your financial dashboard."
-      footerText="Don't have an account?"
-      footerLinkText="Sign Up"
+      title="Bem-vindo de Volta"
+      description="Faça login para acessar seu painel financeiro."
+      footerText="Não tem uma conta?"
+      footerLinkText="Cadastre-se"
       footerHref="/signup"
     >
       <LoginForm />

@@ -102,42 +102,42 @@ export default function DashboardPage() {
         <div className="container mx-auto">
           <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h2>
-              <p className="text-muted-foreground">Your real-time financial overview.</p>
+              <h2 className="text-3xl font-bold tracking-tight font-headline">Painel</h2>
+              <p className="text-muted-foreground">Sua visão financeira em tempo real.</p>
             </div>
-             <Button onClick={handleReset} variant="outline">Reset Data</Button>
+             <Button onClick={handleReset} variant="outline">Resetar Dados</Button>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <FinancialCard
-              title="Bank Balance"
+              title="Saldo Bancário"
               icon={<Landmark className="h-5 w-5" />}
               value={formatCurrency(financialData.bankBalance)}
-              description="Total cash available"
+              description="Total de dinheiro disponível"
             />
             <FinancialCard
-              title="Investments"
+              title="Investimentos"
               icon={<LineChart className="h-5 w-5" />}
               value={formatCurrency(financialData.investments)}
-              description="Value of all assets"
+              description="Valor de todos os ativos"
             />
             <FinancialCard
-              title="Total Expenses"
+              title="Despesas Totais"
               icon={<Wallet className="h-5 w-5" />}
               value={formatCurrency(totalExpenses)}
-              description="Spent this month"
+              description="Gasto este mês"
             />
              <FinancialCard
-              title="Net Worth"
+              title="Patrimônio Líquido"
               icon={<TrendingUp className="h-5 w-5" />}
               value={formatCurrency(financialData.bankBalance + financialData.investments)}
-              description="Balance + Investments"
+              description="Saldo + Investimentos"
             />
 
             <Card className="col-span-1 lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                    <Banknote className="h-5 w-5 text-muted-foreground" />
-                   Real-time Earnings
+                   Ganhos em Tempo Real
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                     {formatRealTimeCurrency(earnings)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                    Earnings since you opened the page. Based on your {financialData.income.frequency} income of {formatCurrency(financialData.income.amount)}.
+                    Ganhos desde que você abriu a página. Baseado na sua renda {financialData.income.frequency} de {formatCurrency(financialData.income.amount)}.
                 </p>
               </CardContent>
             </Card>

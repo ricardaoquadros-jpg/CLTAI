@@ -11,9 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
+  email: z.string().email({ message: 'Por favor, insira um endereço de e-mail válido.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
 
 export function SignUpForm() {
@@ -30,13 +30,13 @@ export function SignUpForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('Signup attempt with:', values);
+    console.log('Tentativa de cadastro com:', values);
     toast({
-      title: 'Account Created',
-      description: "You're now ready to manage your finances. Redirecting...",
+      title: 'Conta Criada',
+      description: "Você está pronto para gerenciar suas finanças. Redirecionando...",
     });
-    // In a real app, you would handle user creation here.
-    // For this mock, we'll just redirect.
+    // Em um aplicativo real, você lidaria com a criação do usuário aqui.
+    // Para este mock, vamos apenas redirecionar.
     router.push('/dashboard');
   }
 
@@ -48,9 +48,9 @@ export function SignUpForm() {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="João da Silva" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -63,7 +63,7 @@ export function SignUpForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="nome@exemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -74,7 +74,7 @@ export function SignUpForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Senha</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -84,7 +84,7 @@ export function SignUpForm() {
         />
         <Button type="submit" className="w-full">
           <UserPlus className="mr-2 h-4 w-4" />
-          Create Account
+          Criar Conta
         </Button>
       </form>
     </Form>

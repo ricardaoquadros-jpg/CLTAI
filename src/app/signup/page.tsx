@@ -4,10 +4,10 @@ import { SignUpForm } from '@/components/auth/SignUpForm';
 export default function SignUpPage() {
   return (
     <AuthCard
-      title="Create an Account"
-      description="Start your journey to financial clarity today."
-      footerText="Already have an account?"
-      footerLinkText="Sign In"
+      title="Crie uma Conta"
+      description="Comece sua jornada para a clareza financeira hoje."
+      footerText="Já tem uma conta?"
+      footerLinkText="Faça Login"
       footerHref="/login"
     >
       <SignUpForm />

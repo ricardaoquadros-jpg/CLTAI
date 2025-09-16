@@ -11,8 +11,8 @@ const Header = () => {
 
   const handleLogout = () => {
     toast({
-      title: 'Logged Out',
-      description: 'You have been successfully logged out.',
+      title: 'Desconectado',
+      description: 'Você foi desconectado com sucesso.',
     });
     router.push('/login');
   };
@@ -37,12 +37,12 @@ const Header = () => {
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
               </svg>
             <h1 className="text-xl font-bold text-foreground font-headline">
-              Financial Glimpse
+              Visão Financeira
             </h1>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            Sair
           </Button>
         </div>
     </header>
