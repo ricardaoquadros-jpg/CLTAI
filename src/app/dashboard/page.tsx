@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { parse } from 'date-fns';
+import { parse, getDaysInMonth } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -102,7 +102,8 @@ export default function DashboardPage() {
                 return amount / (totalWorkHoursInMonth * SECONDS_IN_HOUR);
             case 'monthly':
             default:
-                return amount / (AVG_DAYS_IN_MONTH * SECONDS_IN_DAY);
+                const daysInCurrentMonth = getDaysInMonth(new Date());
+                return amount / (daysInCurrentMonth * SECONDS_IN_DAY);
         }
     } catch (e) {
         return 0;
@@ -286,7 +287,7 @@ export default function DashboardPage() {
           </div>
           
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
-              <Card className="w-full text-center">
+              <Card className="w-full text-center bg-[#1d2630]">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Banknote className="h-5 w-5" />
@@ -309,7 +310,7 @@ export default function DashboardPage() {
                       </p>
                   </CardContent>
               </Card>
-              <Card className="w-full text-center">
+              <Card className="w-full text-center bg-[#1d2630]">
                   <CardHeader>
                       <CardTitle className="flex items-center justify-center gap-2 text-base font-medium text-muted-foreground">
                       <Calendar className="h-5 w-5" />
@@ -333,7 +334,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card>
+            <Card className="bg-[#1d2630]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base font-medium">
                         <Briefcase className="h-5 w-5 text-primary" />
@@ -357,7 +358,7 @@ export default function DashboardPage() {
                    </div>
                 </CardContent>
             </Card>
-             <Card>
+             <Card className="bg-[#1d2630]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
