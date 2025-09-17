@@ -138,34 +138,47 @@ export default function DashboardPage() {
 
       let currentDayEarnings = 0;
       let progress = 0;
+      const isMonthlyFrequency = financialData.salary.frequency === 'monthly';
 
-      if (now > startOfWorkDay && now <= endOfWorkDay && isWorking) {
-        let elapsedSeconds = (now.getTime() - startOfWorkDay.getTime()) / 1000;
-        
-        if (breakStartTime && breakEndTime) {
-            const breakStart = parse(breakStartTime, 'HH:mm', new Date());
-            const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
+      if (isMonthlyFrequency) {
+          const startOfDay = new Date();
+          startOfDay.setHours(0, 0, 0, 0);
+          const elapsedSecondsToday = (now.getTime() - startOfDay.getTime()) / 1000;
+          currentDayEarnings = elapsedSecondsToday * earningsPerSecond;
+          
+          if (now.getHours() === 23 && now.getMinutes() === 59 && now.getSeconds() === 59) {
+              currentDayEarnings = totalDailyEarnings;
+          }
 
-            if (now > breakEnd) {
-                const breakDurationSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
-                elapsedSeconds -= breakDurationSeconds;
-            } else if (now > breakStart && now < breakEnd) {
-                elapsedSeconds -= (now.getTime() - breakStart.getTime()) / 1000;
-            }
-        }
-        
-        currentDayEarnings = elapsedSeconds * earningsPerSecond;
-        
-        const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
-        const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
-        progress = (elapsedDuration / totalDuration) * 100;
-
-      } else if (now > endOfWorkDay && workDays.includes(now.getDay())) {
-         currentDayEarnings = totalDailyEarnings;
-         progress = 100;
       } else {
-        currentDayEarnings = 0;
-        progress = 0;
+        if (now > startOfWorkDay && now <= endOfWorkDay && isWorking) {
+          let elapsedSeconds = (now.getTime() - startOfWorkDay.getTime()) / 1000;
+          
+          if (breakStartTime && breakEndTime) {
+              const breakStart = parse(breakStartTime, 'HH:mm', new Date());
+              const breakEnd = parse(breakEndTime, 'HH:mm', new Date());
+
+              if (now > breakEnd) {
+                  const breakDurationSeconds = (breakEnd.getTime() - breakStart.getTime()) / 1000;
+                  elapsedSeconds -= breakDurationSeconds;
+              } else if (now > breakStart && now < breakEnd) {
+                  elapsedSeconds -= (now.getTime() - breakStart.getTime()) / 1000;
+              }
+          }
+          
+          currentDayEarnings = elapsedSeconds * earningsPerSecond;
+          
+          const totalDuration = endOfWorkDay.getTime() - startOfWorkDay.getTime();
+          const elapsedDuration = now.getTime() - startOfWorkDay.getTime();
+          progress = (elapsedDuration / totalDuration) * 100;
+
+        } else if (now > endOfWorkDay && workDays.includes(now.getDay())) {
+           currentDayEarnings = totalDailyEarnings;
+           progress = 100;
+        } else {
+          currentDayEarnings = 0;
+          progress = 0;
+        }
       }
 
       setRealTimeEarnings(currentDayEarnings);
@@ -177,12 +190,12 @@ export default function DashboardPage() {
       let monthToDateEarnings = 0;
 
       for (let d = startOfMonth; d < today; d.setDate(d.getDate() + 1)) {
-        if (workDays.includes(d.getDay())) {
+        if (isMonthlyFrequency || workDays.includes(d.getDay())) {
           monthToDateEarnings += totalDailyEarnings;
         }
       }
       
-      if (workDays.includes(today.getDay())) {
+      if (isMonthlyFrequency || workDays.includes(today.getDay())) {
         monthToDateEarnings += currentDayEarnings;
       }
       
@@ -305,7 +318,9 @@ export default function DashboardPage() {
                           </PrivacyWrapper>
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                          {isWorking ? 
+                          {financialData.salary.frequency === 'monthly' ?
+                            `Ganhos acumulados ao longo do dia.` :
+                            isWorking ? 
                             `Ganhos acumulados até agora.` :
                             inBreak ? 
                             `Em horário de intervalo. Ganhos pausados.` :
