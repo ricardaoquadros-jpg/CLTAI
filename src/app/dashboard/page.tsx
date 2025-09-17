@@ -112,6 +112,10 @@ export default function DashboardPage() {
   
   const totalDailyEarnings = useMemo(() => {
       if (!financialData) return 0;
+      if (financialData.salary.frequency === 'monthly') {
+        const daysInCurrentMonth = getDaysInMonth(new Date());
+        return financialData.salary.amount / daysInCurrentMonth;
+      }
       return financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
   }, [financialData, earningsPerSecond]);
 
