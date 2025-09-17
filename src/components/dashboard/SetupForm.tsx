@@ -5,7 +5,7 @@ import * as z from 'zod';
 import type { FinancialData } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
 import React, { useState, useEffect, useMemo } from 'react';
-import { startOfMonth, isSameDay, differenceInMinutes, parse } from 'date-fns';
+import { startOfMonth, isSameDay, differenceInMinutes, parse, getDaysInMonth } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -72,6 +72,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   });
 
   const selectedWeekDays = form.watch('workDays');
+  const salaryFrequency = form.watch('salaryFrequency');
   const hoursPerDay = form.watch('hoursPerDay');
   const startTime = form.watch('startTime');
   const endTime = form.watch('endTime');
@@ -121,7 +122,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInMonth = getDaysInMonth(today);
 
     if(selectedWeekDays && selectedWeekDays.length > 0) {
         for (let day = 1; day <= daysInMonth; day++) {
@@ -133,6 +134,23 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     }
     setSelectedDates(dates);
   }, [selectedWeekDays]);
+
+  useEffect(() => {
+    if (salaryFrequency === 'monthly') {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const daysInMonth = getDaysInMonth(today);
+      
+      const allDatesInMonth: Date[] = [];
+      for (let day = 1; day <= daysInMonth; day++) {
+        allDatesInMonth.push(new Date(year, month, day));
+      }
+      setSelectedDates(allDatesInMonth);
+      form.setValue('workDays', [0, 1, 2, 3, 4, 5, 6]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salaryFrequency, form.setValue]);
 
   const handleCalendarSelect = (day: Date | undefined) => {
     if (!day) return;
@@ -258,7 +276,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                         className="gap-2"
                        >
                          {weekDaysMap.map(day => (
-                            <ToggleGroupItem key={day.value} value={day.value} aria-label={`Toggle ${day.label}`}>
+                            <ToggleGroupItem key={day.value} value={day.value} aria-label={`Toggle ${day.label}`} data-state={field.value.includes(parseInt(day.value, 10)) ? 'on' : 'off'}>
                                 {day.label}
                             </ToggleGroupItem>
                          ))}
