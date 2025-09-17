@@ -230,7 +230,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           <SelectItem value="monthly">
                             <div>
                                 <p>Mensal</p>
-                                <p className="text-xs text-muted-foreground">O salário é dividido por 30.44 dias.</p>
+                                <p className="text-xs text-muted-foreground">O salário é dividido pelos dias do mês atual.</p>
                             </div>
                           </SelectItem>
                         </SelectContent>
