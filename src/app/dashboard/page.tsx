@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -118,6 +118,14 @@ export default function DashboardPage() {
       }
       return financialData.hoursPerDay * SECONDS_IN_HOUR * earningsPerSecond;
   }, [financialData, earningsPerSecond]);
+
+  const weeklyEarnings = useMemo(() => {
+    if (!financialData) return 0;
+    if (financialData.salary.frequency === 'monthly') {
+      return totalDailyEarnings * 7;
+    }
+    return totalDailyEarnings * financialData.workDays.length;
+  }, [financialData, totalDailyEarnings]);
 
   const earningsPerHour = useMemo(() => {
     return earningsPerSecond * SECONDS_IN_HOUR;
@@ -282,6 +290,7 @@ export default function DashboardPage() {
   const formattedInvestments = formatCurrency(financialData.investments);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
   const formattedSalary = formatCurrency(financialData.salary.amount);
+  const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -400,6 +409,14 @@ export default function DashboardPage() {
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedSalary}>
                                  {formattedSalary}
+                               </PrivacyWrapper>
+                             </p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarRange className="h-4 w-4" /> Ganho Semanal</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedWeeklyEarnings}>
+                                 {formattedWeeklyEarnings}
                                </PrivacyWrapper>
                              </p>
                         </div>
