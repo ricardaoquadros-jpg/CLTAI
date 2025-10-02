@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { FinancialData, Investment } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
-import React, { useState, useEffect, useMemo } from 'react';
-import { startOfMonth, isSameDay, differenceInMinutes, parse, getDaysInMonth } from 'date-fns';
+import React, from 'react';
+import { startOfMonth, isSameDay, differenceInMinutes, getDaysInMonth } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +27,7 @@ import { CalendarDays, Clock, PlusCircle, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
+import { useState, useMemo, useEffect } from 'react';
 
 
 const investmentSchema = z.object({
@@ -39,7 +40,7 @@ const investmentSchema = z.object({
 const formSchema = z.object({
   salaryAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
   salaryFrequency: z.enum(['monthly', 'monthly_work_hours']),
-  bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
+  bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }).optional(),
   investments: z.array(z.object({
     id: z.string(),
     description: z.string(),
@@ -74,9 +75,9 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
         resolver: zodResolver(investmentSchema),
         defaultValues: {
             description: '',
-            amount: 0,
+            amount: '' as any,
             date: new Date(),
-            annualYield: 0,
+            annualYield: '' as any,
         }
     });
 
@@ -179,9 +180,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      salaryAmount: 5000,
+      salaryAmount: '' as any,
       salaryFrequency: 'monthly_work_hours',
-      bankBalance: 0,
+      bankBalance: '' as any,
       investments: [],
       startTime: '09:00',
       endTime: '18:00',
@@ -314,7 +315,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     // We can derive the workdays from the selected dates to be more accurate
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
     
-    const finalBankBalance = values.bankBalance > 0 ? values.bankBalance : values.salaryAmount;
+    const finalBankBalance = values.bankBalance !== undefined && values.bankBalance >= 0 ? values.bankBalance : values.salaryAmount;
 
     onSetupComplete({
       salary: {
