@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import type { FinancialData, Expense } from '@/lib/types';
+import type { FinancialData, Expense, Investment } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { parse, getDaysInMonth, startOfYear } from 'date-fns';
+import { parse, getDaysInMonth, startOfYear, differenceInSeconds } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -85,6 +85,11 @@ export default function DashboardPage() {
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timeInterval);
   }, []);
+
+  const totalInvestedAmount = useMemo(() => {
+    if (!financialData?.investments) return 0;
+    return financialData.investments.reduce((acc, inv) => acc + inv.amount, 0);
+  }, [financialData]);
   
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.salary) return 0;
@@ -215,13 +220,19 @@ export default function DashboardPage() {
     const calculateInvestmentEarnings = () => {
         if (financialData.investments && financialData.investmentYield) {
             const annualYieldDecimal = financialData.investmentYield / 100;
-            const yieldPerSecond = (financialData.investments * annualYieldDecimal) / SECONDS_IN_YEAR;
-            
+            const yieldPerSecond = annualYieldDecimal / SECONDS_IN_YEAR;
             const now = new Date();
-            const beginningOfYear = startOfYear(now);
-            const secondsSinceYearStart = (now.getTime() - beginningOfYear.getTime()) / 1000;
             
-            setRealTimeInvestmentEarnings(secondsSinceYearStart * yieldPerSecond);
+            let totalYield = 0;
+            financialData.investments.forEach(investment => {
+                const investmentStartDate = new Date(investment.date);
+                if (now > investmentStartDate) {
+                    const secondsSinceInvestment = differenceInSeconds(now, investmentStartDate);
+                    totalYield += investment.amount * yieldPerSecond * secondsSinceInvestment;
+                }
+            });
+
+            setRealTimeInvestmentEarnings(totalYield);
         }
     };
 
@@ -296,7 +307,7 @@ export default function DashboardPage() {
 
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
-  const netWorth = financialData.bankBalance + financialData.investments;
+  const netWorth = financialData.bankBalance + totalInvestedAmount;
 
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
@@ -306,7 +317,7 @@ export default function DashboardPage() {
   const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
   const formattedEarningsPerHour = formatCurrency(earningsPerHour);
   const formattedBankBalance = formatCurrency(financialData.salary.amount - totalExpenses);
-  const formattedInvestments = formatCurrency(financialData.investments);
+  const formattedInvestments = formatCurrency(totalInvestedAmount);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
   const formattedSalary = formatCurrency(financialData.salary.amount);
   const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);

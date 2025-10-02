@@ -12,10 +12,17 @@ export interface Expense {
   date: string;
 }
 
+export interface Investment {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+}
+
 export interface FinancialData {
   salary: Salary;
   bankBalance: number;
-  investments: number;
+  investments: Investment[];
   investmentYield?: number;
   startTime: string;     // e.g., "09:00"
   endTime: string;       // e.g., "17:00"

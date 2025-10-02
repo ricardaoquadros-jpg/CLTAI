@@ -2,7 +2,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import type { FinancialData } from '@/lib/types';
+import type { FinancialData, Investment } from '@/lib/types';
 import { ptBR } from "date-fns/locale"
 import React, { useState, useEffect, useMemo } from 'react';
 import { startOfMonth, isSameDay, differenceInMinutes, parse, getDaysInMonth } from 'date-fns';
@@ -23,14 +23,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from '../ui/separator';
-import { CalendarDays, Clock } from 'lucide-react';
+import { CalendarDays, Clock, PlusCircle, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
+
+const investmentSchema = z.object({
+  description: z.string().min(2, { message: "A descrição é muito curta." }),
+  amount: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
+  date: z.date({ required_error: "A data é obrigatória." }),
+});
 
 const formSchema = z.object({
   salaryAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
   salaryFrequency: z.enum(['monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
-  investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
+  investments: z.array(z.object({
+    id: z.string(),
+    description: z.string(),
+    amount: z.number(),
+    date: z.string(),
+  })),
   investmentYield: z.coerce.number().nonnegative({ message: 'O rendimento não pode ser negativo.' }).optional(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
@@ -54,6 +68,90 @@ interface SetupFormProps {
   onSetupComplete: (data: FinancialData) => void;
 }
 
+const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omit<Investment, 'id'>) => void }) => {
+    const investmentForm = useForm<z.infer<typeof investmentSchema>>({
+        resolver: zodResolver(investmentSchema),
+        defaultValues: {
+            description: '',
+            amount: 0,
+            date: new Date(),
+        }
+    });
+
+    const onSubmit = (values: z.infer<typeof investmentSchema>) => {
+        onAddInvestment({
+            ...values,
+            date: values.date.toISOString(),
+        });
+        investmentForm.reset();
+    }
+
+    return (
+        <Form {...investmentForm}>
+            <form onSubmit={investmentForm.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={investmentForm.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Descrição</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Ex: Ações, Fundo Imobiliário" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={investmentForm.control}
+                    name="amount"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Valor</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="1000" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={investmentForm.control}
+                    name="date"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Data do Investimento</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button variant="outline" className="pl-3 text-left font-normal">
+                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                                            <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Investimento
+                </Button>
+            </form>
+        </Form>
+    )
+}
+
 export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -62,7 +160,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       salaryAmount: 5000,
       salaryFrequency: 'monthly_work_hours',
       bankBalance: 0,
-      investments: 0,
+      investments: [],
       investmentYield: 0,
       startTime: '09:00',
       endTime: '18:00',
@@ -80,6 +178,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const endTime = form.watch('endTime');
   const breakStartTime = form.watch('breakStartTime');
   const breakEndTime = form.watch('breakEndTime');
+  const investments = form.watch('investments');
 
   useEffect(() => {
     try {
@@ -173,6 +272,22 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     }
     return hoursPerDay * selectedDates.length;
   }, [hoursPerDay, selectedDates]);
+
+  const handleAddInvestment = (investment: Omit<Investment, 'id'>) => {
+    const newInvestment: Investment = {
+      ...investment,
+      id: new Date().toISOString(),
+    };
+    form.setValue('investments', [...investments, newInvestment]);
+  }
+
+  const handleDeleteInvestment = (id: string) => {
+    form.setValue('investments', investments.filter(inv => inv.id !== id));
+  }
+
+  const totalInvested = useMemo(() => {
+    return investments.reduce((acc, inv) => acc + inv.amount, 0);
+  }, [investments]);
   
   function onSubmit(values: z.infer<typeof formSchema>) {
     // We can derive the workdays from the selected dates to be more accurate
@@ -408,39 +523,69 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="investments"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total de Investimentos</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="25000" {...field} />
-                    </FormControl>
-                    <FormDescription>O valor total de todos os seus investimentos.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                  control={form.control}
-                  name="investmentYield"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rendimento Anual dos Investimentos (%)</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input type="number" placeholder="8" {...field} />
-                        </FormControl>
-                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
-                          %
-                        </span>
-                      </div>
-                      <FormDescription>Taxa de rendimento anual esperada.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              
+              <Separator />
+              <div>
+                  <h3 className="text-lg font-medium mb-4">Investimentos</h3>
+                  <div className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Adicionar Novo Investimento</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <InvestmentForm onAddInvestment={handleAddInvestment} />
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Investimentos Registrados</CardTitle>
+                            <CardDescription>Total investido: {formatCurrency(totalInvested)}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {investments.length > 0 ? (
+                                investments.map(inv => (
+                                    <div key={inv.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
+                                        <div>
+                                            <p className="font-medium">{inv.description}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {formatCurrency(inv.amount)} em {format(new Date(inv.date), "dd/MM/yyyy")}
+                                            </p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteInvestment(inv.id)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center">Nenhum investimento adicionado.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <FormField
+                      control={form.control}
+                      name="investmentYield"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rendimento Anual dos Investimentos (%)</FormLabel>
+                          <div className="relative">
+                            <FormControl>
+                              <Input type="number" placeholder="8" {...field} />
+                            </FormControl>
+                            <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                              %
+                            </span>
+                          </div>
+                          <FormDescription>Taxa de rendimento anual esperada (aplicada a todos os investimentos).</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+              </div>
+
+
               <Button type="submit" size="lg" className="w-full">
                 Ir para o Painel
               </Button>
