@@ -286,7 +286,7 @@ export default function DashboardPage() {
   const formattedNetWorth = formatCurrency(netWorth);
   const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
   const formattedEarningsPerHour = formatCurrency(earningsPerHour);
-  const formattedBankBalance = formatCurrency(financialData.bankBalance);
+  const formattedBankBalance = formatCurrency(financialData.salary.amount - totalExpenses);
   const formattedInvestments = formatCurrency(financialData.investments);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
   const formattedSalary = formatCurrency(financialData.salary.amount);
@@ -413,6 +413,22 @@ export default function DashboardPage() {
                              </p>
                         </div>
                         <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
+                                 {formattedTotalExpenses}
+                               </PrivacyWrapper>
+                             </p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
+                             <p className="font-semibold">
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
+                                 {formattedBankBalance}
+                               </PrivacyWrapper>
+                             </p>
+                        </div>
+                        <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarRange className="h-4 w-4" /> Ganho Semanal</p>
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedWeeklyEarnings}>
@@ -436,27 +452,11 @@ export default function DashboardPage() {
                                </PrivacyWrapper>
                              </p>
                         </div>
-                        <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
-                                 {formattedBankBalance}
-                               </PrivacyWrapper>
-                             </p>
-                        </div>
                          <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
                                  {formattedInvestments}
-                               </PrivacyWrapper>
-                             </p>
-                        </div>
-                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
-                                 {formattedTotalExpenses}
                                </PrivacyWrapper>
                              </p>
                         </div>
