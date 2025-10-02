@@ -142,7 +142,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                     name="date"
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Data do Investimento</FormLabel>
+                            <FormLabel>Data que você fez o investimento</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
