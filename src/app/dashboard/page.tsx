@@ -386,7 +386,8 @@ export default function DashboardPage() {
                    </div>
                 </CardContent>
             </Card>
-             <Card className="bg-[#1d2630]">
+            
+            <Card className="bg-[#1d2630]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-primary" />
@@ -447,19 +448,30 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Hourglass className="h-4 w-4" /> Ganho por Hora</p>
                              <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedEarningsPerHour}>
+                               <PrivacyWrapper isPrivate={isPrivate={isPrivacyMode}} value={formattedEarningsPerHour}>
                                  {formattedEarningsPerHour}
                                </PrivacyWrapper>
                              </p>
                         </div>
-                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><LineChart className="h-4 w-4" /> Investimentos</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
-                                 {formattedInvestments}
-                               </PrivacyWrapper>
-                             </p>
-                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-[#1d2630]">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <LineChart className="h-5 w-5 text-primary" />
+                        Investimentos
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <p className="text-sm text-muted-foreground">Valor Total Investido</p>
+                        <p className="text-3xl font-bold">
+                          <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
+                            {formattedInvestments}
+                          </PrivacyWrapper>
+                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -475,5 +487,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
