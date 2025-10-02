@@ -155,10 +155,16 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 step="0.1"
                                 className="rounded-none text-center"
                                 {...field}
-                                value={field.value !== undefined && field.value !== null ? Number(field.value).toFixed(1) : ''}
+                                value={field.value ?? ''}
                                 onChange={e => {
                                     const value = e.target.value;
                                     field.onChange(value === '' ? '' : parseFloat(value));
+                                }}
+                                onBlur={e => {
+                                    const value = parseFloat(e.target.value);
+                                    if (!isNaN(value)) {
+                                        field.onChange(value.toFixed(1));
+                                    }
                                 }}
                             />
                             </FormControl>
