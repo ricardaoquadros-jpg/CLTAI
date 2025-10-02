@@ -77,9 +77,9 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
         resolver: zodResolver(investmentSchema),
         defaultValues: {
             description: '',
-            amount: '' as any,
+            amount: undefined,
             date: new Date(),
-            annualYield: '' as any,
+            annualYield: undefined,
         }
     });
 
@@ -91,9 +91,9 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
             });
             investmentForm.reset({
               description: '',
-              amount: '' as any,
+              amount: undefined,
               date: new Date(),
-              annualYield: '' as any,
+              annualYield: undefined,
             });
         })();
     }
@@ -144,7 +144,11 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 variant="outline"
                                 size="icon"
                                 className="h-full rounded-r-none"
-                                onClick={() => field.onChange(Math.max(0, (Number(field.value) || 0) - 0.1))}
+                                onClick={() => {
+                                    const currentValue = Number(field.value) || 0;
+                                    const newValue = Math.max(0, currentValue - 0.1);
+                                    field.onChange(parseFloat(newValue.toFixed(1)));
+                                }}
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>
@@ -158,12 +162,12 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 value={field.value ?? ''}
                                 onChange={e => {
                                     const value = e.target.value;
-                                    field.onChange(value === '' ? '' : parseFloat(value));
+                                    field.onChange(value === '' ? undefined : value);
                                 }}
                                 onBlur={e => {
                                     const value = parseFloat(e.target.value);
                                     if (!isNaN(value)) {
-                                        field.onChange(value.toFixed(1));
+                                        field.onChange(parseFloat(value.toFixed(1)));
                                     }
                                 }}
                             />
@@ -173,7 +177,11 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 variant="outline"
                                 size="icon"
                                 className="h-full rounded-l-none"
-                                onClick={() => field.onChange((Number(field.value) || 0) + 0.1)}
+                                onClick={() => {
+                                    const currentValue = Number(field.value) || 0;
+                                    const newValue = currentValue + 0.1;
+                                    field.onChange(parseFloat(newValue.toFixed(1)));
+                                }}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
@@ -227,9 +235,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      salaryAmount: '' as any,
+      salaryAmount: undefined,
       salaryFrequency: 'monthly_work_hours',
-      bankBalance: '' as any,
+      bankBalance: undefined,
       investments: [],
       startTime: '09:00',
       endTime: '18:00',
