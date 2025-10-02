@@ -42,14 +42,14 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
-    <Card className={cn("col-span-1 lg:col-span-2", className)}>
+    <Card className={cn("col-span-1 lg:col-span-2 bg-[#1d2630]", className)}>
       <CardHeader>
         <CardTitle>Controle de Despesas</CardTitle>
         <CardDescription>Registre e visualize suas despesas para este mês. Total: {formatCurrency(totalExpenses)}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
+          <div className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -78,10 +78,10 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
                 )}
               />
             </div>
-            <Button type="submit" className="w-full sm:w-auto">
+            <Button type="button" onClick={form.handleSubmit(onSubmit)} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
             </Button>
-          </form>
+          </div>
         </Form>
         <ScrollArea className="h-64 pr-4">
           <div className="space-y-4">
@@ -113,5 +113,3 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
     </Card>
   );
 }
-
-    

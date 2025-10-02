@@ -271,13 +271,6 @@ export default function DashboardPage() {
     };
     const updatedExpenses = [...expenses, newExpense];
     setExpenses(updatedExpenses);
-    
-    if (financialData) {
-      setFinancialData({
-        ...financialData,
-        bankBalance: financialData.bankBalance - newExpense.amount,
-      });
-    }
   };
 
   const handleDeleteExpense = (id: string) => {
@@ -316,6 +309,7 @@ export default function DashboardPage() {
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + totalInvestedAmount;
+  const bankBalance = financialData.salary.amount - totalExpenses;
 
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
@@ -324,7 +318,7 @@ export default function DashboardPage() {
   const formattedNetWorth = formatCurrency(netWorth);
   const formattedTotalDailyEarnings = formatCurrency(totalDailyEarnings);
   const formattedEarningsPerHour = formatCurrency(earningsPerHour);
-  const formattedBankBalance = formatCurrency(financialData.salary.amount - totalExpenses);
+  const formattedBankBalance = formatCurrency(bankBalance);
   const formattedInvestments = formatCurrency(totalInvestedAmount);
   const formattedTotalExpenses = formatCurrency(totalExpenses);
   const formattedSalary = formatCurrency(financialData.salary.amount);
@@ -444,7 +438,7 @@ export default function DashboardPage() {
                     </div>
                     <Separator />
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                         <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Salário</p>
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedSalary}>
