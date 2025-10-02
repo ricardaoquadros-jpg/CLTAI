@@ -33,6 +33,7 @@ const investmentSchema = z.object({
   description: z.string().min(2, { message: "A descrição é muito curta." }),
   amount: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   date: z.date({ required_error: "A data é obrigatória." }),
+  annualYield: z.coerce.number().nonnegative({ message: "O rendimento não pode ser negativo." }),
 });
 
 const formSchema = z.object({
@@ -44,8 +45,8 @@ const formSchema = z.object({
     description: z.string(),
     amount: z.number(),
     date: z.string(),
+    annualYield: z.number(),
   })),
-  investmentYield: z.coerce.number().nonnegative({ message: 'O rendimento não pode ser negativo.' }).optional(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   breakStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }).optional().or(z.literal('')),
@@ -75,6 +76,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
             description: '',
             amount: 0,
             date: new Date(),
+            annualYield: 0,
         }
     });
 
@@ -114,6 +116,24 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                             <FormMessage />
                         </FormItem>
                     )}
+                />
+                 <FormField
+                  control={investmentForm.control}
+                  name="annualYield"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rendimento Anual (%)</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input type="number" placeholder="8" {...field} />
+                        </FormControl>
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                          %
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                     control={investmentForm.control}
@@ -161,7 +181,6 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       salaryFrequency: 'monthly_work_hours',
       bankBalance: 0,
       investments: [],
-      investmentYield: 0,
       startTime: '09:00',
       endTime: '18:00',
       breakStartTime: '12:00',
@@ -300,7 +319,6 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       },
       bankBalance: values.bankBalance,
       investments: values.investments,
-      investmentYield: values.investmentYield,
       startTime: values.startTime,
       endTime: values.endTime,
       breakStartTime: values.breakStartTime || undefined,
@@ -549,7 +567,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                                         <div>
                                             <p className="font-medium">{inv.description}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                {formatCurrency(inv.amount)} em {format(new Date(inv.date), "dd/MM/yyyy")}
+                                                {formatCurrency(inv.amount)} em {format(new Date(inv.date), "dd/MM/yyyy")} a {inv.annualYield}% a.a.
                                             </p>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteInvestment(inv.id)}>
@@ -562,26 +580,6 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                             )}
                         </CardContent>
                     </Card>
-
-                    <FormField
-                      control={form.control}
-                      name="investmentYield"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Rendimento Anual dos Investimentos (%)</FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                              <Input type="number" placeholder="8" {...field} />
-                            </FormControl>
-                            <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
-                              %
-                            </span>
-                          </div>
-                          <FormDescription>Taxa de rendimento anual esperada (aplicada a todos os investimentos).</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
               </div>
 

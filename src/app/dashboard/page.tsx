@@ -90,6 +90,14 @@ export default function DashboardPage() {
     if (!financialData?.investments) return 0;
     return financialData.investments.reduce((acc, inv) => acc + inv.amount, 0);
   }, [financialData]);
+
+  const averageInvestmentYield = useMemo(() => {
+    if (!financialData?.investments || financialData.investments.length === 0 || totalInvestedAmount === 0) {
+      return 0;
+    }
+    const weightedYieldSum = financialData.investments.reduce((acc, inv) => acc + inv.amount * inv.annualYield, 0);
+    return weightedYieldSum / totalInvestedAmount;
+  }, [financialData, totalInvestedAmount]);
   
   const earningsPerSecond = useMemo(() => {
     if (!financialData?.salary) return 0;
@@ -218,13 +226,13 @@ export default function DashboardPage() {
     };
 
     const calculateInvestmentEarnings = () => {
-        if (financialData.investments && financialData.investmentYield) {
-            const annualYieldDecimal = financialData.investmentYield / 100;
-            const yieldPerSecond = annualYieldDecimal / SECONDS_IN_YEAR;
+        if (financialData.investments && financialData.investments.length > 0) {
             const now = new Date();
-            
             let totalYield = 0;
+            
             financialData.investments.forEach(investment => {
+                const annualYieldDecimal = investment.annualYield / 100;
+                const yieldPerSecond = annualYieldDecimal / SECONDS_IN_YEAR;
                 const investmentStartDate = new Date(investment.date);
                 if (now > investmentStartDate) {
                     const secondsSinceInvestment = differenceInSeconds(now, investmentStartDate);
@@ -504,16 +512,16 @@ export default function DashboardPage() {
                           </PrivacyWrapper>
                         </p>
                     </div>
-                    {financialData.investmentYield !== undefined && (
+                    {financialData.investments.length > 0 && (
                         <div>
                             <Separator />
                             <div className="flex items-center justify-between pt-4">
                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                                    <Percent className="h-4 w-4" /> Rendimento Anual
+                                    <Percent className="h-4 w-4" /> Rendimento Médio Anual
                                 </p>
                                 <p className="font-semibold">
-                                    <PrivacyWrapper isPrivate={isPrivacyMode} value={`${financialData.investmentYield.toFixed(2)}%`}>
-                                      {financialData.investmentYield.toFixed(2)}%
+                                    <PrivacyWrapper isPrivate={isPrivacyMode} value={`${averageInvestmentYield.toFixed(2)}%`}>
+                                      {averageInvestmentYield.toFixed(2)}%
                                     </PrivacyWrapper>
                                 </p>
                             </div>
