@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import type { FinancialData, Expense } from '@/lib/types';
-import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
+import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { parse, getDaysInMonth } from 'date-fns';
+import { parse, getDaysInMonth, startOfYear } from 'date-fns';
 
 
 const SECONDS_IN_HOUR = 3600;
 const SECONDS_IN_DAY = 86400;
 const AVG_DAYS_IN_MONTH = 30.44;
 const AVG_BUSINESS_DAYS_IN_MONTH = 22;
+const SECONDS_IN_YEAR = 31536000; // 365 * 24 * 60 * 60
 
 
 function isDuringBreakHours(breakStartTime?: string, breakEndTime?: string): boolean {
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
+  const [realTimeInvestmentEarnings, setRealTimeInvestmentEarnings] = useState(0);
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -210,8 +212,25 @@ export default function DashboardPage() {
       setRealTimeMonthEarnings(monthToDateEarnings);
     };
 
+    const calculateInvestmentEarnings = () => {
+        if (financialData.investments && financialData.investmentYield) {
+            const annualYieldDecimal = financialData.investmentYield / 100;
+            const yieldPerSecond = (financialData.investments * annualYieldDecimal) / SECONDS_IN_YEAR;
+            
+            const now = new Date();
+            const beginningOfYear = startOfYear(now);
+            const secondsSinceYearStart = (now.getTime() - beginningOfYear.getTime()) / 1000;
+            
+            setRealTimeInvestmentEarnings(secondsSinceYearStart * yieldPerSecond);
+        }
+    };
+
     calculateEarnings();
-    const timer = setInterval(calculateEarnings, 1000);
+    calculateInvestmentEarnings();
+    const timer = setInterval(() => {
+        calculateEarnings();
+        calculateInvestmentEarnings();
+    }, 1000);
 
     return () => clearInterval(timer);
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
@@ -291,6 +310,7 @@ export default function DashboardPage() {
   const formattedTotalExpenses = formatCurrency(totalExpenses);
   const formattedSalary = formatCurrency(financialData.salary.amount);
   const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);
+  const formattedRealTimeInvestmentEarnings = formatInvestmentCurrency(realTimeInvestmentEarnings);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -414,6 +434,14 @@ export default function DashboardPage() {
                              </p>
                         </div>
                         <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarRange className="h-4 w-4" /> Ganho Semanal</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedWeeklyEarnings}>
+                                {formattedWeeklyEarnings}
+                                </PrivacyWrapper>
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
@@ -426,14 +454,6 @@ export default function DashboardPage() {
                              <p className="font-semibold">
                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
                                  {formattedBankBalance}
-                               </PrivacyWrapper>
-                             </p>
-                        </div>
-                        <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarRange className="h-4 w-4" /> Ganho Semanal</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedWeeklyEarnings}>
-                                 {formattedWeeklyEarnings}
                                </PrivacyWrapper>
                              </p>
                         </div>
@@ -484,6 +504,16 @@ export default function DashboardPage() {
                                     <PrivacyWrapper isPrivate={isPrivacyMode} value={`${financialData.investmentYield.toFixed(2)}%`}>
                                       {financialData.investmentYield.toFixed(2)}%
                                     </PrivacyWrapper>
+                                </p>
+                            </div>
+                            <div className="flex items-center justify-between pt-4">
+                                <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                    <TrendingUp className="h-4 w-4" /> Ganhos em Tempo Real
+                                </p>
+                                <p className="font-semibold text-green-400">
+                                  <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeInvestmentEarnings}>
+                                      {formattedRealTimeInvestmentEarnings}
+                                  </PrivacyWrapper>
                                 </p>
                             </div>
                         </div>

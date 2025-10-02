@@ -21,3 +21,12 @@ export function formatRealTimeCurrency(amount: number) {
     maximumFractionDigits: 2,
   }).format(amount);
 }
+
+export function formatInvestmentCurrency(amount: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }).format(amount);
+}
