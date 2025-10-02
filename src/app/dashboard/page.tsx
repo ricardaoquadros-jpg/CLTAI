@@ -229,6 +229,7 @@ export default function DashboardPage() {
     const calculateInvestmentEarnings = () => {
         if (financialData.investments && financialData.investments.length > 0) {
             const now = new Date();
+            const currentDay = now.getDay(); // 0 (Sun) to 6 (Sat)
             let totalYield = 0;
             const individualYields: {[key: string]: number} = {};
             
@@ -238,10 +239,23 @@ export default function DashboardPage() {
                 const investmentStartDate = new Date(investment.date);
                 let investmentYield = 0;
 
-                if (now > investmentStartDate) {
+                const isBusinessDay = currentDay >= 1 && currentDay <= 5;
+                const shouldCalculateYield = !investment.yieldOnBusinessDaysOnly || isBusinessDay;
+
+                if (now > investmentStartDate && shouldCalculateYield) {
                     const secondsSinceInvestment = differenceInSeconds(now, investmentStartDate);
                     investmentYield = investment.amount * yieldPerSecond * secondsSinceInvestment;
+                } else if (now > investmentStartDate && investment.yieldOnBusinessDaysOnly && !isBusinessDay) {
+                    // if it is weekend, we need to calculate based on the last business day (friday)
+                    const lastFriday = new Date(now);
+                    lastFriday.setDate(now.getDate() - (currentDay === 6 ? 1 : 2)); // Sat -> -1, Sun -> -2
+                    lastFriday.setHours(23, 59, 59, 999);
+                     if (lastFriday > investmentStartDate) {
+                        const secondsSinceInvestment = differenceInSeconds(lastFriday, investmentStartDate);
+                        investmentYield = investment.amount * yieldPerSecond * secondsSinceInvestment;
+                    }
                 }
+                
                 individualYields[investment.id] = investmentYield;
                 totalYield += investmentYield;
             });

@@ -18,6 +18,7 @@ export interface Investment {
   amount: number;
   date: string;
   annualYield: number;
+  yieldOnBusinessDaysOnly?: boolean;
 }
 
 export interface FinancialData {

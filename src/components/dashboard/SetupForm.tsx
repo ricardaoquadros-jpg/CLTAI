@@ -36,6 +36,7 @@ const investmentSchema = z.object({
   amount: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   date: z.date({ required_error: "A data é obrigatória." }),
   annualYield: z.coerce.number().nonnegative({ message: "O rendimento não pode ser negativo." }),
+  yieldOnBusinessDaysOnly: z.boolean().default(false).optional(),
 });
 
 const formSchema = z.object({
@@ -48,6 +49,7 @@ const formSchema = z.object({
     amount: z.number(),
     date: z.string(),
     annualYield: z.number(),
+    yieldOnBusinessDaysOnly: z.boolean().optional(),
   })),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
@@ -80,6 +82,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
             amount: undefined,
             date: new Date(),
             annualYield: undefined,
+            yieldOnBusinessDaysOnly: false,
         }
     });
 
@@ -94,6 +97,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
               amount: undefined,
               date: new Date(),
               annualYield: undefined,
+              yieldOnBusinessDaysOnly: false,
             });
         })();
     }
@@ -190,6 +194,28 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                             </span>
                         </div>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={investmentForm.control}
+                  name="yieldOnBusinessDaysOnly"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Rende apenas em dias úteis
+                        </FormLabel>
+                        <FormDescription>
+                          Marque esta opção se o rendimento não se aplica aos fins de semana.
+                        </FormDescription>
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -650,7 +676,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                                         <div>
                                             <p className="font-medium">{inv.description}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                {formatCurrency(inv.amount)} em {format(new Date(inv.date), "dd/MM/yyyy")} a {inv.annualYield}% a.a.
+                                                {formatCurrency(inv.amount)} em {format(new Date(inv.date), "dd/MM/yyyy")} a {inv.annualYield}% a.a. {inv.yieldOnBusinessDaysOnly && '(dias úteis)'}
                                             </p>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteInvestment(inv.id)}>
