@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
   const [realTimeInvestmentEarnings, setRealTimeInvestmentEarnings] = useState(0);
+  const [individualInvestmentEarnings, setIndividualInvestmentEarnings] = useState<{[key: string]: number}>({});
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -229,17 +230,23 @@ export default function DashboardPage() {
         if (financialData.investments && financialData.investments.length > 0) {
             const now = new Date();
             let totalYield = 0;
+            const individualYields: {[key: string]: number} = {};
             
             financialData.investments.forEach(investment => {
                 const annualYieldDecimal = investment.annualYield / 100;
                 const yieldPerSecond = annualYieldDecimal / SECONDS_IN_YEAR;
                 const investmentStartDate = new Date(investment.date);
+                let investmentYield = 0;
+
                 if (now > investmentStartDate) {
                     const secondsSinceInvestment = differenceInSeconds(now, investmentStartDate);
-                    totalYield += investment.amount * yieldPerSecond * secondsSinceInvestment;
+                    investmentYield = investment.amount * yieldPerSecond * secondsSinceInvestment;
                 }
+                individualYields[investment.id] = investmentYield;
+                totalYield += investmentYield;
             });
 
+            setIndividualInvestmentEarnings(individualYields);
             setRealTimeInvestmentEarnings(totalYield);
         }
     };
@@ -526,17 +533,21 @@ export default function DashboardPage() {
                             <Separator />
                             <div className='space-y-3'>
                                 {financialData.investments.map(inv => (
-                                    <div key={inv.id} className="flex items-center justify-between text-sm">
+                                    <div key={inv.id} className="flex items-start justify-between text-sm">
                                         <div className='flex items-center gap-2'>
-                                            <PiggyBank className='h-5 w-5 text-primary/70'/>
+                                            <PiggyBank className='h-5 w-5 text-primary/70 mt-1'/>
                                             <div>
                                                 <p className='font-semibold'>{inv.description}</p>
                                                 <p className='text-xs text-muted-foreground'>{formatCurrency(inv.amount)}</p>
                                             </div>
                                         </div>
                                         <div className='text-right'>
-                                            <p className="font-semibold">{(inv.annualYield / 12).toFixed(2)}%</p>
-                                            <p className='text-xs text-muted-foreground'>ao mês</p>
+                                            <p className="font-semibold">{(inv.annualYield / 12).toFixed(2)}% <span className='text-xs text-muted-foreground'>ao mês</span></p>
+                                            <p className='font-semibold text-green-400 text-xs'>
+                                              <PrivacyWrapper isPrivate={isPrivacyMode} value={formatInvestmentCurrency(individualInvestmentEarnings[inv.id] || 0)}>
+                                                {formatInvestmentCurrency(individualInvestmentEarnings[inv.id] || 0)}
+                                              </PrivacyWrapper>
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
