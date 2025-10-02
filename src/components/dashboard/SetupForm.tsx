@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from '../ui/separator';
-import { CalendarDays, Clock, PlusCircle, Trash2 } from 'lucide-react';
+import { CalendarDays, Clock, PlusCircle, Trash2, Minus, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
@@ -125,7 +125,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 R$
                                 </span>
                                 <FormControl>
-                                    <Input type="number" placeholder="1000" className="pl-10" {...field} />
+                                    <Input type="number" placeholder="1000" className="pl-10" {...field} value={field.value ?? ''} />
                                 </FormControl>
                             </div>
                             <FormMessage />
@@ -138,14 +138,43 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Rendimento Anual (%)</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input type="number" placeholder="8" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
-                          %
-                        </span>
-                      </div>
+                        <div className="relative flex items-center">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-full rounded-r-none"
+                                onClick={() => field.onChange(Math.max(0, (field.value || 0) - 0.1))}
+                            >
+                                <Minus className="h-4 w-4" />
+                            </Button>
+                            <FormControl>
+                            <Input
+                                type="number"
+                                placeholder="8.0"
+                                step="0.1"
+                                className="rounded-none text-center"
+                                {...field}
+                                value={field.value !== undefined && field.value !== null ? Number(field.value).toFixed(1) : ''}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    field.onChange(value === '' ? '' : parseFloat(value));
+                                }}
+                            />
+                            </FormControl>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-full rounded-l-none"
+                                onClick={() => field.onChange((field.value || 0) + 0.1)}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                            <span className="absolute inset-y-0 right-12 flex items-center pr-3 text-muted-foreground pointer-events-none">
+                            %
+                            </span>
+                        </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -318,7 +347,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     // We can derive the workdays from the selected dates to be more accurate
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
     
-    const finalBankBalance = values.bankBalance !== undefined && values.bankBalance !== null && values.bankBalance >= 0 ? values.bankBalance : values.salaryAmount;
+    const finalBankBalance = (values.bankBalance === undefined || values.bankBalance === null || values.bankBalance === 0) 
+      ? values.salaryAmount 
+      : values.bankBalance;
     
     onSetupComplete({
       salary: {
