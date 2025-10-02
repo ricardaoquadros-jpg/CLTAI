@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent, PiggyBank } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -497,19 +497,52 @@ export default function DashboardPage() {
                         Investimentos
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <p className="text-sm text-muted-foreground">Valor Total Investido</p>
-                        <p className="text-3xl font-bold">
-                          <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
-                            {formattedInvestments}
-                          </PrivacyWrapper>
-                        </p>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <div className='flex items-baseline justify-between'>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Valor Total Investido</p>
+                                <p className="text-3xl font-bold">
+                                  <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedInvestments}>
+                                    {formattedInvestments}
+                                  </PrivacyWrapper>
+                                </p>
+                            </div>
+                            <div className='text-right'>
+                                <p className="text-sm text-muted-foreground flex items-center gap-1.5 justify-end">
+                                    <TrendingUp className="h-4 w-4" /> Ganhos
+                                </p>
+                                <p className="font-semibold text-green-400">
+                                  <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeInvestmentEarnings}>
+                                      {formattedRealTimeInvestmentEarnings}
+                                  </PrivacyWrapper>
+                                </p>
+                            </div>
+                        </div>
                     </div>
+                    
                     {financialData.investments.length > 0 && (
-                        <div>
+                        <div className="space-y-4">
                             <Separator />
-                            <div className="flex items-center justify-between pt-4">
+                            <div className='space-y-3'>
+                                {financialData.investments.map(inv => (
+                                    <div key={inv.id} className="flex items-center justify-between text-sm">
+                                        <div className='flex items-center gap-2'>
+                                            <PiggyBank className='h-5 w-5 text-primary/70'/>
+                                            <div>
+                                                <p className='font-semibold'>{inv.description}</p>
+                                                <p className='text-xs text-muted-foreground'>{formatCurrency(inv.amount)}</p>
+                                            </div>
+                                        </div>
+                                        <div className='text-right'>
+                                            <p className="font-semibold">{(inv.annualYield / 12).toFixed(2)}%</p>
+                                            <p className='text-xs text-muted-foreground'>ao mês</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between pt-2">
                                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                                     <Percent className="h-4 w-4" /> Rendimento Médio Anual
                                 </p>
@@ -517,16 +550,6 @@ export default function DashboardPage() {
                                     <PrivacyWrapper isPrivate={isPrivacyMode} value={`${averageInvestmentYield.toFixed(2)}%`}>
                                       {averageInvestmentYield.toFixed(2)}%
                                     </PrivacyWrapper>
-                                </p>
-                            </div>
-                            <div className="flex items-center justify-between pt-4">
-                                <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                                    <TrendingUp className="h-4 w-4" /> Ganhos em Tempo Real
-                                </p>
-                                <p className="font-semibold text-green-400">
-                                  <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedRealTimeInvestmentEarnings}>
-                                      {formattedRealTimeInvestmentEarnings}
-                                  </PrivacyWrapper>
                                 </p>
                             </div>
                         </div>
