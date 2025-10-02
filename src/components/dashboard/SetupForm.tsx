@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { useState, useMemo, useEffect } from 'react';
+import { Checkbox } from '../ui/checkbox';
 
 
 const investmentSchema = z.object({
@@ -52,6 +53,7 @@ const formSchema = z.object({
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   breakStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }).optional().or(z.literal('')),
   breakEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }).optional().or(z.literal('')),
+  noBreak: z.boolean().default(false).optional(),
   hoursPerDay: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }).max(24, { message: 'As horas não podem exceder 24.'}),
   workDays: z.array(z.number()).min(1, { message: "Você precisa selecionar pelo menos um dia de trabalho." }),
 });
@@ -87,7 +89,12 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                 ...values,
                 date: values.date.toISOString(),
             });
-            investmentForm.reset();
+            investmentForm.reset({
+              description: '',
+              amount: '' as any,
+              date: new Date(),
+              annualYield: '' as any,
+            });
         })();
     }
 
@@ -188,6 +195,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       endTime: '18:00',
       breakStartTime: '12:00',
       breakEndTime: '13:00',
+      noBreak: false,
       hoursPerDay: 8,
       workDays: ["1", "2", "3", "4", "5"].map(Number), // Default to Mon-Fri
     },
@@ -200,6 +208,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   const endTime = form.watch('endTime');
   const breakStartTime = form.watch('breakStartTime');
   const breakEndTime = form.watch('breakEndTime');
+  const noBreak = form.watch('noBreak');
   const investments = form.watch('investments');
 
   useEffect(() => {
@@ -217,7 +226,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       }
 
       let breakMinutes = 0;
-      if (breakStartTime && breakEndTime) {
+      if (!noBreak && breakStartTime && breakEndTime) {
         const [breakStartHour, breakStartMinute] = breakStartTime.split(':').map(Number);
         const [breakEndHour, breakEndMinute] = breakEndTime.split(':').map(Number);
         const breakStartDate = new Date(0, 0, 0, breakStartHour, breakStartMinute);
@@ -237,7 +246,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       // Ignore errors from invalid time formats during input
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startTime, endTime, breakStartTime, breakEndTime, form.setValue]);
+  }, [startTime, endTime, breakStartTime, breakEndTime, noBreak, form.setValue]);
 
 
   useEffect(() => {
@@ -315,8 +324,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     // We can derive the workdays from the selected dates to be more accurate
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
     
-    const finalBankBalance = values.bankBalance !== undefined && values.bankBalance >= 0 ? values.bankBalance : values.salaryAmount;
-
+    const finalBankBalance = values.bankBalance !== undefined && values.bankBalance !== null && values.bankBalance >= 0 ? values.bankBalance : values.salaryAmount;
+    
     onSetupComplete({
       salary: {
         amount: values.salaryAmount,
@@ -326,8 +335,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: values.investments,
       startTime: values.startTime,
       endTime: values.endTime,
-      breakStartTime: values.breakStartTime || undefined,
-      breakEndTime: values.breakEndTime || undefined,
+      breakStartTime: values.noBreak ? undefined : values.breakStartTime || undefined,
+      breakEndTime: values.noBreak ? undefined : values.breakEndTime || undefined,
       hoursPerDay: values.hoursPerDay,
       workDays: finalWorkDays,
       totalWorkHoursInMonth: totalWorkHours,
@@ -480,7 +489,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     <FormItem>
                       <FormLabel>Início do Intervalo</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input type="time" {...field} disabled={noBreak} />
                       </FormControl>
                       <FormDescription>Opcional. Deixe em branco se não houver intervalo.</FormDescription>
                       <FormMessage />
@@ -494,7 +503,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     <FormItem>
                       <FormLabel>Fim do Intervalo</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input type="time" {...field} disabled={noBreak} />
                       </FormControl>
                       <FormDescription>Opcional. Deixe em branco se não houver intervalo.</FormDescription>
                       <FormMessage />
@@ -502,6 +511,29 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   )}
                 />
               </div>
+
+                <FormField
+                  control={form.control}
+                  name="noBreak"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Não tenho intervalo
+                        </FormLabel>
+                        <FormDescription>
+                          Marque esta opção se você não tem um horário de intervalo definido.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
