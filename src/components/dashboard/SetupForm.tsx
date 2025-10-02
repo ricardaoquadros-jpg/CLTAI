@@ -120,9 +120,14 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Valor</FormLabel>
-                            <FormControl>
-                                <Input type="number" placeholder="1000" {...field} />
-                            </FormControl>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                R$
+                                </span>
+                                <FormControl>
+                                    <Input type="number" placeholder="1000" className="pl-10" {...field} />
+                                </FormControl>
+                            </div>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -135,7 +140,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                       <FormLabel>Rendimento Anual (%)</FormLabel>
                       <div className="relative">
                         <FormControl>
-                          <Input type="number" placeholder="8" {...field} />
+                          <Input type="number" placeholder="8" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
                           %
@@ -256,7 +261,12 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     const month = today.getMonth();
     const daysInMonth = getDaysInMonth(today);
 
-    if(selectedWeekDays && selectedWeekDays.length > 0) {
+    if(salaryFrequency === 'monthly') {
+        for (let day = 1; day <= daysInMonth; day++) {
+            dates.push(new Date(year, month, day));
+        }
+        form.setValue('workDays', [0, 1, 2, 3, 4, 5, 6]);
+    } else if(selectedWeekDays && selectedWeekDays.length > 0) {
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
             if (selectedWeekDays.includes(date.getDay())) {
@@ -265,24 +275,8 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
         }
     }
     setSelectedDates(dates);
-  }, [selectedWeekDays]);
-
-  useEffect(() => {
-    if (salaryFrequency === 'monthly') {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      const daysInMonth = getDaysInMonth(today);
-      
-      const allDatesInMonth: Date[] = [];
-      for (let day = 1; day <= daysInMonth; day++) {
-        allDatesInMonth.push(new Date(year, month, day));
-      }
-      setSelectedDates(allDatesInMonth);
-      form.setValue('workDays', [0, 1, 2, 3, 4, 5, 6]);
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salaryFrequency, form.setValue]);
+  }, [selectedWeekDays, salaryFrequency]);
 
   const handleCalendarSelect = (day: Date | undefined) => {
     if (!day) return;
@@ -368,7 +362,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           R$
                         </span>
                         <FormControl>
-                          <Input type="number" placeholder="5000" className="pl-10" {...field} />
+                          <Input type="number" placeholder="5000" className="pl-10" {...field} value={field.value ?? ''}/>
                         </FormControl>
                       </div>
                       <FormDescription>Seu salário antes dos impostos.</FormDescription>
@@ -424,6 +418,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                             field.onChange(value.map(Number));
                         }}
                         className="gap-2"
+                        disabled={salaryFrequency === 'monthly'}
                        >
                          {weekDaysMap.map(day => (
                             <ToggleGroupItem key={day.value} value={day.value} aria-label={`Toggle ${day.label}`} data-state={field.value.includes(parseInt(day.value, 10)) ? 'on' : 'off'}>
@@ -448,6 +443,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     className="rounded-md border"
                     locale={ptBR}
                     month={startOfMonth(new Date())}
+                    disabled={salaryFrequency === 'monthly'}
                   />
                </div>
                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -570,9 +566,14 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Saldo Bancário Atual</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="10000" {...field} />
-                    </FormControl>
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                          R$
+                        </span>
+                        <FormControl>
+                          <Input type="number" placeholder="10000" className="pl-10" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                    </div>
                     <FormDescription>O valor total que você tem em suas contas bancárias. Se não informado, será considerado o valor do salário.</FormDescription>
                     <FormMessage />
                   </FormItem>
