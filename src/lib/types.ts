@@ -16,6 +16,7 @@ export interface FinancialData {
   salary: Salary;
   bankBalance: number;
   investments: number;
+  investmentYield?: number;
   startTime: string;     // e.g., "09:00"
   endTime: string;       // e.g., "17:00"
   breakStartTime?: string; // e.g., "12:00"

@@ -6,7 +6,7 @@ import { formatCurrency, formatRealTimeCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -197,7 +197,7 @@ export default function DashboardPage() {
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       let monthToDateEarnings = 0;
 
-      for (let d = startOfMonth; d < today; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(startOfMonth); d < today; d.setDate(d.getDate() + 1)) {
         if (isMonthlyFrequency || workDays.includes(d.getDay())) {
           monthToDateEarnings += totalDailyEarnings;
         }
@@ -448,7 +448,7 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between">
                              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Hourglass className="h-4 w-4" /> Ganho por Hora</p>
                              <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivate={isPrivacyMode}} value={formattedEarningsPerHour}>
+                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedEarningsPerHour}>
                                  {formattedEarningsPerHour}
                                </PrivacyWrapper>
                              </p>
@@ -473,6 +473,21 @@ export default function DashboardPage() {
                           </PrivacyWrapper>
                         </p>
                     </div>
+                    {financialData.investmentYield !== undefined && (
+                        <div>
+                            <Separator />
+                            <div className="flex items-center justify-between pt-4">
+                                <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                    <Percent className="h-4 w-4" /> Rendimento Anual
+                                </p>
+                                <p className="font-semibold">
+                                    <PrivacyWrapper isPrivate={isPrivacyMode} value={`${financialData.investmentYield.toFixed(2)}%`}>
+                                      {financialData.investmentYield.toFixed(2)}%
+                                    </PrivacyWrapper>
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
             

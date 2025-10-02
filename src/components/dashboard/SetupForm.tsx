@@ -31,6 +31,7 @@ const formSchema = z.object({
   salaryFrequency: z.enum(['monthly', 'monthly_work_hours']),
   bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.coerce.number().nonnegative({ message: 'O investimento não pode ser negativo.' }),
+  investmentYield: z.coerce.number().nonnegative({ message: 'O rendimento não pode ser negativo.' }).optional(),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }),
   breakStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Formato de hora inválido. Use HH:MM." }).optional().or(z.literal('')),
@@ -62,6 +63,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       salaryFrequency: 'monthly_work_hours',
       bankBalance: 0,
       investments: 0,
+      investmentYield: 0,
       startTime: '09:00',
       endTime: '18:00',
       breakStartTime: '12:00',
@@ -183,6 +185,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       },
       bankBalance: values.bankBalance,
       investments: values.investments,
+      investmentYield: values.investmentYield,
       startTime: values.startTime,
       endTime: values.endTime,
       breakStartTime: values.breakStartTime || undefined,
@@ -419,6 +422,25 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   </FormItem>
                 )}
               />
+               <FormField
+                  control={form.control}
+                  name="investmentYield"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rendimento Anual dos Investimentos (%)</FormLabel>
+                      <div className="relative">
+                        <FormControl>
+                          <Input type="number" placeholder="8" {...field} />
+                        </FormControl>
+                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
+                          %
+                        </span>
+                      </div>
+                      <FormDescription>Taxa de rendimento anual esperada.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               <Button type="submit" size="lg" className="w-full">
                 Ir para o Painel
               </Button>
