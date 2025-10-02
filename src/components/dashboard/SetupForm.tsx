@@ -80,17 +80,19 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
         }
     });
 
-    const onSubmit = (values: z.infer<typeof investmentSchema>) => {
-        onAddInvestment({
-            ...values,
-            date: values.date.toISOString(),
-        });
-        investmentForm.reset();
+    const handleAddClick = () => {
+        investmentForm.handleSubmit((values) => {
+            onAddInvestment({
+                ...values,
+                date: values.date.toISOString(),
+            });
+            investmentForm.reset();
+        })();
     }
 
     return (
         <Form {...investmentForm}>
-            <form onSubmit={investmentForm.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-4">
                 <FormField
                     control={investmentForm.control}
                     name="description"
@@ -164,10 +166,10 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                         </FormItem>
                     )}
                 />
-                <Button type="submit" className="w-full">
+                <Button type="button" onClick={handleAddClick} className="w-full">
                     <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Investimento
                 </Button>
-            </form>
+            </div>
         </Form>
     )
 }
