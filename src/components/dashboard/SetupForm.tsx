@@ -144,7 +144,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 variant="outline"
                                 size="icon"
                                 className="h-full rounded-r-none"
-                                onClick={() => field.onChange(Math.max(0, (field.value || 0) - 0.1))}
+                                onClick={() => field.onChange(Math.max(0, (Number(field.value) || 0) - 0.1))}
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>
@@ -167,7 +167,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
                                 variant="outline"
                                 size="icon"
                                 className="h-full rounded-l-none"
-                                onClick={() => field.onChange((field.value || 0) + 0.1)}
+                                onClick={() => field.onChange((Number(field.value) || 0) + 0.1)}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
