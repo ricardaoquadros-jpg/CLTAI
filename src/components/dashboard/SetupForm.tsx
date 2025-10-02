@@ -313,13 +313,15 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   function onSubmit(values: z.infer<typeof formSchema>) {
     // We can derive the workdays from the selected dates to be more accurate
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
+    
+    const finalBankBalance = values.bankBalance > 0 ? values.bankBalance : values.salaryAmount;
 
     onSetupComplete({
       salary: {
         amount: values.salaryAmount,
         frequency: values.salaryFrequency as FinancialData['salary']['frequency'],
       },
-      bankBalance: values.bankBalance,
+      bankBalance: finalBankBalance,
       investments: values.investments,
       startTime: values.startTime,
       endTime: values.endTime,
@@ -538,7 +540,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                     <FormControl>
                       <Input type="number" placeholder="10000" {...field} />
                     </FormControl>
-                    <FormDescription>O valor total que você tem em suas contas bancárias.</FormDescription>
+                    <FormDescription>O valor total que você tem em suas contas bancárias. Se não informado, será considerado o valor do salário.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

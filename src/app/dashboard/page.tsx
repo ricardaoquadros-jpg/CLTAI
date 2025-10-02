@@ -309,7 +309,7 @@ export default function DashboardPage() {
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   const netWorth = financialData.bankBalance + totalInvestedAmount;
-  const bankBalance = financialData.salary.amount - totalExpenses;
+  const bankBalance = financialData.bankBalance - totalExpenses;
 
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
