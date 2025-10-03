@@ -335,11 +335,6 @@ export default function DashboardPage() {
     
     const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', id);
     deleteDocumentNonBlocking(expenseDocRef);
-
-    if (financialData && financialDataRef) {
-      const newBalance = financialData.bankBalance + expenseToDelete.amount;
-      setDocumentNonBlocking(financialDataRef, { bankBalance: newBalance }, { merge: true });
-    }
   };
   
   const handleReset = () => {
@@ -649,5 +644,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
