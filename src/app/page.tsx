@@ -79,9 +79,21 @@ export default function Home() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
       router.push('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering with email', error);
-      toast({ variant: 'destructive', title: 'Erro no Registro', description: 'Não foi possível criar a conta. Verifique os dados.' });
+      if (error.code === 'auth/email-already-in-use') {
+        toast({
+          variant: 'destructive',
+          title: 'Erro no Registro',
+          description: 'Este email já está em uso. Por favor, tente fazer login ou use um email diferente.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Erro no Registro',
+          description: 'Não foi possível criar a conta. Verifique os dados e tente novamente.',
+        });
+      }
     }
   }
 
