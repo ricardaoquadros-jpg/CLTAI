@@ -379,8 +379,8 @@ export default function DashboardPage() {
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   
-  const netWorth = financialData.bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings - totalExpenses;
   const bankBalance = financialData.bankBalance - totalExpenses;
+  const netWorth = bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings;
   
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
@@ -644,5 +644,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
