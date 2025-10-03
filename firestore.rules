@@ -3,125 +3,159 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants access only to the user with a matching UID.
+     * @description Enforces user-level access control for user profiles.
      * @path /users/{userId}
-     * @allow (create) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates their profile with matching userId.
-     * @deny (create) - User DUmmyId attempts to create profile for C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @allow (get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 accesses their profile.
-     * @deny (get, update, delete) - User DUmmyId attempts to access profile C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) If the user is creating their own profile (auth.uid == userId).
+     * @allow (get, update, delete) If the user is the owner of the profile (auth.uid == userId).
+     * @deny (create) If the user is trying to create a profile for someone else.
+     * @deny (get, update, delete) If the user is not the owner of the profile.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
+      // Helper function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the document.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      // Helper function to check if the user is the existing owner of the document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
 
-      allow create: if isSignedIn() && isOwner(userId) && request.auth.uid == userId;
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not permitted to protect user privacy.
+      allow create: if isSignedIn() && request.auth.uid == userId; // Enforce the data consistency between the path and the userId.
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Grants access only to the owner of the bank account.
+     * @description Enforces user-level access control for bank accounts.
      * @path /users/{userId}/bankAccounts/{bankAccountId}
-     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their bank account.
-     * @deny (create, get, update, delete) - User DUmmyId attempts to access bank account of C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @principle Enforces document ownership for writes.
+     * @allow (create, get, list, update, delete) If the user is the owner of the bank account (auth.uid == userId).
+     * @deny (create, get, list, update, delete) If the user is not the owner of the bank account.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/bankAccounts/{bankAccountId} {
+
+      // Helper function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the document.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      // Helper function to check if the user is the existing owner of the document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
 
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId) && request.auth.uid == userId;
+      allow list: if isOwner(userId) && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isExistingOwner(userId) && request.auth.uid == userId;
+      allow delete: if isExistingOwner(userId) && request.auth.uid == userId;
     }
 
     /**
-     * @description Grants access only to the owner of the investment account.
+     * @description Enforces user-level access control for investment accounts.
      * @path /users/{userId}/investmentAccounts/{investmentAccountId}
-     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their investment account.
-     * @deny (create, get, update, delete) - User DUmmyId attempts to access investment account of C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @principle Enforces document ownership for writes.
+     * @allow (create, get, list, update, delete) If the user is the owner of the investment account (auth.uid == userId).
+     * @deny (create, get, list, update, delete) If the user is not the owner of the investment account.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/investmentAccounts/{investmentAccountId} {
+
+      // Helper function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the document.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      // Helper function to check if the user is the existing owner of the document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
 
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId) && request.auth.uid == userId;
+      allow list: if isOwner(userId) && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isExistingOwner(userId) && request.auth.uid == userId;
+      allow delete: if isExistingOwner(userId) && request.auth.uid == userId;
     }
 
     /**
-     * @description Grants access only to the owner of the income record.
+     * @description Enforces user-level access control for income records.
      * @path /users/{userId}/incomes/{incomeId}
-     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their income record.
-     * @deny (create, get, update, delete) - User DUmmyId attempts to access income record of C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @principle Enforces document ownership for writes.
+     * @allow (create, get, list, update, delete) If the user is the owner of the income record (auth.uid == userId).
+     * @deny (create, get, list, update, delete) If the user is not the owner of the income record.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/incomes/{incomeId} {
+
+      // Helper function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the document.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      // Helper function to check if the user is the existing owner of the document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
 
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId) && request.auth.uid == userId;
+      allow list: if isOwner(userId) && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isExistingOwner(userId) && request.auth.uid == userId;
+      allow delete: if isExistingOwner(userId) && request.auth.uid == userId;
     }
 
     /**
-     * @description Grants access only to the owner of the expense record.
+     * @description Enforces user-level access control for expenses records.
      * @path /users/{userId}/expenses/{expenseId}
-     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their expense record.
-     * @deny (create, get, update, delete) - User DUmmyId attempts to access expense record of C0FJa5JCmGcQC0mOILvEBxxHcye2.
-     * @principle Enforces document ownership for writes.
+     * @allow (create, get, list, update, delete) If the user is the owner of the expense record (auth.uid == userId).
+     * @deny (create, get, list, update, delete) If the user is not the owner of the expense record.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId}/expenses/{expenseId} {
+
+      // Helper function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the document.
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      // Helper function to check if the user is the existing owner of the document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
 
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId) && request.auth.uid == userId;
+      allow list: if isOwner(userId) && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isExistingOwner(userId) && request.auth.uid == userId;
+      allow delete: if isExistingOwner(userId) && request.auth.uid == userId;
     }
   }
 }
