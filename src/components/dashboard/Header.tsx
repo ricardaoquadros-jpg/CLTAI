@@ -1,24 +1,25 @@
 'use client';
 import React from 'react';
-import useLocalStorage from '@/hooks/useLocalStorage';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const Header = () => {
   const router = useRouter();
-  const [, setFinancialData] = useLocalStorage('financialData', null);
-  const [, setExpenses] = useLocalStorage('expenses', []);
-  const [, setUserName] = useLocalStorage('userName', null);
+  const auth = useAuth();
 
   const handleLogoClick = () => {
     router.push('/');
   };
 
-  const handleLogout = () => {
-    setFinancialData(null);
-    setExpenses([]);
-    setUserName(null);
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out', error);
+    }
   };
 
   return (

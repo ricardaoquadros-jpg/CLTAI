@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useRouter } from 'next/navigation';
+import { doc, collection } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Expense, Investment } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
@@ -68,11 +70,23 @@ const PrivacyWrapper = ({ isPrivate, children, value }: { isPrivate: boolean, ch
 }
 
 export default function DashboardPage() {
-  const [isClient, setIsClient] = useState(false);
-  const [financialData, setFinancialData] = useLocalStorage<FinancialData | null>('financialData', null);
-  const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
-  const [userName] = useLocalStorage<string | null>('userName', null);
-  
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const financialDataRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid, 'data', 'financial');
+  }, [firestore, user]);
+
+  const expensesRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, 'users', user.uid, 'expenses');
+  }, [firestore, user]);
+
+  const { data: financialData, isLoading: isFinancialDataLoading } = useDoc<FinancialData>(financialDataRef);
+  const { data: expenses, isLoading: areExpensesLoading } = useCollection<Expense>(expensesRef);
+
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
   const [realTimeInvestmentEarnings, setRealTimeInvestmentEarnings] = useState(0);
@@ -82,7 +96,12 @@ export default function DashboardPage() {
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
+    if (!isUserLoading && !user) {
+      router.push('/');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timeInterval);
   }, []);
@@ -276,7 +295,9 @@ export default function DashboardPage() {
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
   const handleSetupComplete = (data: FinancialData) => {
-    setFinancialData(data);
+    if (financialDataRef) {
+      setDocumentNonBlocking(financialDataRef, data, { merge: true });
+    }
     setRealTimeEarnings(0);
     setWorkdayProgress(0);
     if (typeof window !== 'undefined') {
@@ -285,46 +306,54 @@ export default function DashboardPage() {
   };
   
   const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'date'>) => {
-    const newExpense: Expense = {
-      ...expenseData,
-      id: new Date().toISOString(),
-      date: new Date().toISOString(),
-    };
-    const updatedExpenses = [...expenses, newExpense];
-    setExpenses(updatedExpenses);
+    if (expensesRef) {
+      const newExpense = {
+        ...expenseData,
+        date: new Date().toISOString(),
+      };
+      addDocumentNonBlocking(expensesRef, newExpense);
+    }
   };
 
   const handleDeleteExpense = (id: string) => {
+    if (!firestore || !user || !expenses) return;
     const expenseToDelete = expenses.find(exp => exp.id === id);
     if (!expenseToDelete) return;
+    
+    const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', id);
+    deleteDocumentNonBlocking(expenseDocRef);
 
-    const updatedExpenses = expenses.filter(exp => exp.id !== id);
-    setExpenses(updatedExpenses);
-
-    if (financialData) {
-      setFinancialData({
-        ...financialData,
-        bankBalance: financialData.bankBalance + expenseToDelete.amount,
-      });
+    if (financialData && financialDataRef) {
+      const newBalance = financialData.bankBalance + expenseToDelete.amount;
+      setDocumentNonBlocking(financialDataRef, { bankBalance: newBalance }, { merge: true });
     }
   };
   
+  const handleReset = () => {
+    if (financialDataRef) {
+      setDocumentNonBlocking(financialDataRef, { salary: { amount: 0, frequency: 'monthly' }, bankBalance: 0, investments: [] }, { merge: false });
+    }
+    if (expenses) {
+      expenses.forEach(expense => {
+        if(user && firestore) {
+          const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', expense.id);
+          deleteDocumentNonBlocking(expenseDocRef);
+        }
+      })
+    }
+    setRealTimeEarnings(0);
+  }
+
   const totalExpenses = useMemo(() => {
-    return expenses.reduce((sum, expense) => sum + expense.amount, 0)
+    return expenses ? expenses.reduce((sum, expense) => sum + expense.amount, 0) : 0;
   }, [expenses]);
 
-  if (!isClient) {
-    return null; // or a loading skeleton
+  if (isUserLoading || isFinancialDataLoading || areExpensesLoading) {
+    return <div className="flex min-h-screen w-full flex-col items-center justify-center"><p>Carregando...</p></div>;
   }
 
   if (!financialData) {
     return <SetupForm onSetupComplete={handleSetupComplete} />;
-  }
-  
-  const handleReset = () => {
-    setFinancialData(null);
-    setExpenses([]);
-    setRealTimeEarnings(0);
   }
 
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
@@ -353,7 +382,7 @@ export default function DashboardPage() {
         <div className="w-full max-w-4xl space-y-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
-              {userName && <h1 className="text-3xl font-bold tracking-tight mb-2">Olá, {userName}!</h1>}
+              {user?.displayName && <h1 className="text-3xl font-bold tracking-tight mb-2">Olá, {user.displayName.split(' ')[0]}!</h1>}
               <h2 className="text-2xl font-bold tracking-tight font-headline">Seu Painel</h2>
               <p className="text-muted-foreground">Visão geral e simplificada de suas finanças.</p>
             </div>
@@ -583,7 +612,7 @@ export default function DashboardPage() {
             </Card>
             
             <ExpenseTracker 
-              expenses={expenses} 
+              expenses={expenses || []} 
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
             />

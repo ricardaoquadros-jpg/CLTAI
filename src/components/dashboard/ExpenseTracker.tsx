@@ -48,41 +48,41 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
         <CardDescription>Registre e visualize suas despesas para este mês. Total: {formatCurrency(totalExpenses)}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <div className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
+        <div className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
+            <Form {...form}>
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
+                <FormField
                 control={form.control}
                 name="description"
                 render={({ field }) => (
-                  <FormItem>
+                    <FormItem>
                     <FormLabel className="sr-only">Descrição</FormLabel>
                     <FormControl>
-                      <Input placeholder="ex: Café, Aluguel" {...field} />
+                        <Input placeholder="ex: Café, Aluguel" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
+                    </FormItem>
                 )}
-              />
-              <FormField
+                />
+                <FormField
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
-                  <FormItem>
+                    <FormItem>
                     <FormLabel className="sr-only">Valor</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Valor" {...field} />
+                        <Input type="number" placeholder="Valor" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
+                    </FormItem>
                 )}
-              />
+                />
             </div>
+            </Form>
             <Button type="button" onClick={form.handleSubmit(onSubmit)} className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
+                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
             </Button>
-          </div>
-        </Form>
+        </div>
         <ScrollArea className="h-64 pr-4">
           <div className="space-y-4">
             {expenses.length > 0 ? (
