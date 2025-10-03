@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { Expense, ExpenseCategory } from '@/lib/types';
+import { useState, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,10 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+
 
 const expenseCategories: ExpenseCategory[] = ['Lazer', 'Mercado', 'Investimento', 'Transporte', 'Saúde', 'Educação', 'Moradia', 'Outros'];
 
@@ -27,23 +30,55 @@ const formSchema = z.object({
 interface ExpenseTrackerProps {
   expenses: Expense[];
   onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
+  onUpdateExpense: (id: string, expense: Omit<Expense, 'id' | 'date'>) => void;
   onDeleteExpense: (id: string) => void;
   className?: string;
 }
 
-export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, className }: ExpenseTrackerProps) {
+export function ExpenseTracker({ expenses, onAddExpense, onUpdateExpense, onDeleteExpense, className }: ExpenseTrackerProps) {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: '',
       amount: 0,
+      category: 'Outros',
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  const editForm = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+  });
+
+  useEffect(() => {
+    if (editingExpense) {
+      editForm.reset({
+        description: editingExpense.description,
+        amount: editingExpense.amount,
+        category: editingExpense.category,
+      });
+    }
+  }, [editingExpense, editForm]);
+
+  function onAddSubmit(values: z.infer<typeof formSchema>) {
     onAddExpense(values);
-    form.reset();
+    form.reset({ description: '', amount: 0, category: 'Outros' });
   }
+
+  function onEditSubmit(values: z.infer<typeof formSchema>) {
+    if (editingExpense) {
+      onUpdateExpense(editingExpense.id, values);
+      setIsEditDialogOpen(false);
+      setEditingExpense(null);
+    }
+  }
+
+  const handleEditClick = (expense: Expense) => {
+    setEditingExpense(expense);
+    setIsEditDialogOpen(true);
+  };
   
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
@@ -55,7 +90,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
       </CardHeader>
       <CardContent>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
+            <form onSubmit={form.handleSubmit(onAddSubmit)} className="mb-6 flex flex-col items-end gap-4 sm:flex-row">
                 <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
                     <FormField
                       control={form.control}
@@ -125,8 +160,11 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
                     <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEditClick(expense)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onDeleteExpense(expense.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -141,6 +179,72 @@ export function ExpenseTracker({ expenses, onAddExpense, onDeleteExpense, classN
           </div>
         </ScrollArea>
       </CardContent>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Despesa</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {expenseCategories.map(category => (
+                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit">Salvar Alterações</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

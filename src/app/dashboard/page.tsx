@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, collection, deleteField } from 'firebase/firestore';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Expense, Investment } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
@@ -295,7 +295,7 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
-  const handleSetupComplete = (data: FinancialData) => {
+  const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
     if (financialDataRef && user) {
       const initialProfile = {
         uid: user.uid,
@@ -321,6 +321,12 @@ export default function DashboardPage() {
       addDocumentNonBlocking(expensesRef, newExpense);
     }
   };
+
+  const handleUpdateExpense = (id: string, updatedData: Omit<Expense, 'id' | 'date'>) => {
+    if (!firestore || !user) return;
+    const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', id);
+    updateDocumentNonBlocking(expenseDocRef, updatedData);
+  }
 
   const handleDeleteExpense = (id: string) => {
     if (!firestore || !user || !expenses) return;
@@ -633,6 +639,7 @@ export default function DashboardPage() {
             <ExpenseTracker 
               expenses={expenses || []} 
               onAddExpense={handleAddExpense}
+              onUpdateExpense={handleUpdateExpense}
               onDeleteExpense={handleDeleteExpense}
             />
           </div>
