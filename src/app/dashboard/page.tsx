@@ -509,13 +509,13 @@ export default function DashboardPage() {
                     </div>
                     <Separator />
                     <div className="space-y-4">
-                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Salário</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedSalary}>
-                                 {formattedSalary}
-                               </PrivacyWrapper>
-                             </p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Salário</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedSalary}>
+                                {formattedSalary}
+                                </PrivacyWrapper>
+                            </p>
                         </div>
                         <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarRange className="h-4 w-4" /> Ganho Semanal</p>
@@ -526,36 +526,36 @@ export default function DashboardPage() {
                             </p>
                         </div>
                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
-                                 {formattedTotalExpenses}
-                               </PrivacyWrapper>
-                             </p>
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Ganho Diário Total</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalDailyEarnings}>
+                                {formattedTotalDailyEarnings}
+                                </PrivacyWrapper>
+                            </p>
                         </div>
                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
-                                 {formattedBankBalance}
-                               </PrivacyWrapper>
-                             </p>
-                        </div>
-                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Ganho Diário Total</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalDailyEarnings}>
-                                 {formattedTotalDailyEarnings}
-                               </PrivacyWrapper>
-                             </p>
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Hourglass className="h-4 w-4" /> Ganho por Hora</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedEarningsPerHour}>
+                                {formattedEarningsPerHour}
+                                </PrivacyWrapper>
+                            </p>
                         </div>
                         <div className="flex items-center justify-between">
-                             <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Hourglass className="h-4 w-4" /> Ganho por Hora</p>
-                             <p className="font-semibold">
-                               <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedEarningsPerHour}>
-                                 {formattedEarningsPerHour}
-                               </PrivacyWrapper>
-                             </p>
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Landmark className="h-4 w-4" /> Saldo em Conta</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedBankBalance}>
+                                {formattedBankBalance}
+                                </PrivacyWrapper>
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5"><Wallet className="h-4 w-4" /> Despesas do Mês</p>
+                            <p className="font-semibold">
+                                <PrivacyWrapper isPrivate={isPrivacyMode} value={formattedTotalExpenses}>
+                                {formattedTotalExpenses}
+                                </PrivacyWrapper>
+                            </p>
                         </div>
                     </div>
                 </CardContent>
