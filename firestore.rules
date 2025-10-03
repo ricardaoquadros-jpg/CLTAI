@@ -1,228 +1,127 @@
-/**
- * @fileoverview Firestore Security Rules for Financial Glimpse.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user can only access their own data.
- *
- * Data Structure:
- * All data is nested under /users/{userId}, ensuring data isolation. Each document within the subcollections (bankAccounts, investmentAccounts, incomes, expenses) includes a denormalized 'userId' field, enabling efficient and secure authorization.
- *
- * Key Security Decisions:
- * - User listing is implicitly disallowed. Only the `get` operation is enabled for user profiles.
- * - Data consistency is enforced between the document ID and the userId path parameter on creation.
- * - The 'userId' field within subcollection documents is immutable, preventing unauthorized data access after document creation.
- *
- * Denormalization for Authorization:
- * The 'userId' is denormalized into each subcollection document (BankAccount, InvestmentAccount, Income, Expense). This avoids costly 'get()' operations in security rules, allowing for efficient and independent authorization checks.
- *
- * Structural Segregation:
- * All private user data is stored under the `/users/{userId}` path. There is no public data in this application.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Grants access only to the user with a matching UID.
      * @path /users/{userId}
-     * @allow (get) Authenticated user can retrieve their own profile.
-     * @deny (get) Authenticated user cannot retrieve another user's profile.
-     * @allow (create) Authenticated user can create their own profile with a matching user ID.
-     * @deny (create) Authenticated user cannot create a profile with a mismatched user ID.
-     * @allow (update) Authenticated user can update their own profile.
-     * @deny (update) Authenticated user cannot update another user's profile.
-     * @allow (delete) Authenticated user can delete their own profile.
-     * @deny (delete) Authenticated user cannot delete another user's profile.
-     * @principle Enforces document ownership. Only the authenticated user can access their own profile.
+     * @allow (create) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates their profile with matching userId.
+     * @deny (create) - User DUmmyId attempts to create profile for C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @allow (get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 accesses their profile.
+     * @deny (get, update, delete) - User DUmmyId attempts to access profile C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Helper function to check if the request is made by the owner.
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+      function isSignedIn() {
+        return request.auth != null;
       }
 
-      // Allow a user to get their own profile.
-      allow get: if isOwner(userId);
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-      // Prevent listing of all users.
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
 
-      // Allow a user to create their own profile, but only if the userId matches the authenticated user's UID.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-
-      // Allow a user to update their own profile.  The ID must not be changed.
-      allow update: if isOwner(userId) && resource.data.id == request.resource.data.id;
-
-      // Allow a user to delete their own profile.
-      allow delete: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.auth.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to bank account documents for a specific user.
+     * @description Grants access only to the owner of the bank account.
      * @path /users/{userId}/bankAccounts/{bankAccountId}
-     * @allow (get) Authenticated user can retrieve their own bank account details.
-     * @deny (get) Authenticated user cannot retrieve another user's bank account details.
-     * @allow (list) Authenticated user can list their own bank accounts.
-     * @deny (list) Authenticated user cannot list another user's bank accounts.
-     * @allow (create) Authenticated user can create a bank account for themselves with a matching user ID.
-     * @deny (create) Authenticated user cannot create a bank account with a mismatched user ID.
-     * @allow (update) Authenticated user can update their own bank account details.
-     * @deny (update) Authenticated user cannot update another user's bank account details.
-     * @allow (delete) Authenticated user can delete their own bank account.
-     * @deny (delete) Authenticated user cannot delete another user's bank account.
-     * @principle Enforces document ownership. Only the authenticated user can access their own bank account details.
+     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their bank account.
+     * @deny (create, get, update, delete) - User DUmmyId attempts to access bank account of C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/bankAccounts/{bankAccountId} {
-      // Helper function to check if the request is made by the owner of the bank account.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Allow a user to get their own bank account details.
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
 
-      // Allow a user to list their own bank accounts.
-      allow list: if isOwner(userId);
-
-      // Allow a user to create a bank account for themselves.  The userId in the data must match.
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-      // Helper function to check if the user is the existing owner, and the document exists
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to update their own bank account details, but only if they are the owner. The userId must not be changed.
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId;
-
-      // Allow a user to delete their own bank account, but only if they are the owner.
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to investment account documents for a specific user.
+     * @description Grants access only to the owner of the investment account.
      * @path /users/{userId}/investmentAccounts/{investmentAccountId}
-     * @allow (get) Authenticated user can retrieve their own investment account details.
-     * @deny (get) Authenticated user cannot retrieve another user's investment account details.
-     * @allow (list) Authenticated user can list their own investment accounts.
-     * @deny (list) Authenticated user cannot list another user's investment accounts.
-     * @allow (create) Authenticated user can create an investment account for themselves with a matching user ID.
-     * @deny (create) Authenticated user cannot create an investment account with a mismatched user ID.
-     * @allow (update) Authenticated user can update their own investment account details.
-     * @deny (update) Authenticated user cannot update another user's investment account details.
-     * @allow (delete) Authenticated user can delete their own investment account.
-     * @deny (delete) Authenticated user cannot delete another user's investment account.
-     * @principle Enforces document ownership. Only the authenticated user can access their own investment account details.
+     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their investment account.
+     * @deny (create, get, update, delete) - User DUmmyId attempts to access investment account of C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/investmentAccounts/{investmentAccountId} {
-      // Helper function to check if the request is made by the owner of the investment account.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Allow a user to get their own investment account details.
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
 
-      // Allow a user to list their own investment accounts.
-      allow list: if isOwner(userId);
-
-      // Allow a user to create an investment account for themselves.  The userId in the data must match.
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-      // Helper function to check if the user is the existing owner, and the document exists
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to update their own investment account details, but only if they are the owner. The userId must not be changed.
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId;
-
-      // Allow a user to delete their own investment account, but only if they are the owner.
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to income documents for a specific user.
+     * @description Grants access only to the owner of the income record.
      * @path /users/{userId}/incomes/{incomeId}
-     * @allow (get) Authenticated user can retrieve their own income details.
-     * @deny (get) Authenticated user cannot retrieve another user's income details.
-     * @allow (list) Authenticated user can list their own incomes.
-     * @deny (list) Authenticated user cannot list another user's incomes.
-     * @allow (create) Authenticated user can create an income record for themselves with a matching user ID.
-     * @deny (create) Authenticated user cannot create an income record with a mismatched user ID.
-     * @allow (update) Authenticated user can update their own income details.
-     * @deny (update) Authenticated user cannot update another user's income details.
-     * @allow (delete) Authenticated user can delete their own income record.
-     * @deny (delete) Authenticated user cannot delete another user's income record.
-     * @principle Enforces document ownership. Only the authenticated user can access their own income details.
+     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their income record.
+     * @deny (create, get, update, delete) - User DUmmyId attempts to access income record of C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/incomes/{incomeId} {
-      // Helper function to check if the request is made by the owner of the income record.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Allow a user to get their own income details.
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
 
-      // Allow a user to list their own incomes.
-      allow list: if isOwner(userId);
-
-      // Allow a user to create an income record for themselves. The userId in the data must match.
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-      // Helper function to check if the user is the existing owner, and the document exists
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to update their own income details, but only if they are the owner. The userId must not be changed.
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId;
-
-      // Allow a user to delete their own income record, but only if they are the owner.
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to expense documents for a specific user.
+     * @description Grants access only to the owner of the expense record.
      * @path /users/{userId}/expenses/{expenseId}
-     * @allow (get) Authenticated user can retrieve their own expense details.
-     * @deny (get) Authenticated user cannot retrieve another user's expense details.
-     * @allow (list) Authenticated user can list their own expenses.
-     * @deny (list) Authenticated user cannot list another user's expenses.
-     * @allow (create) Authenticated user can create an expense record for themselves with a matching user ID.
-     * @deny (create) Authenticated user cannot create an expense record with a mismatched user ID.
-     * @allow (update) Authenticated user can update their own expense details.
-     * @deny (update) Authenticated user cannot update another user's expense details.
-     * @allow (delete) Authenticated user can delete their own expense record.
-     * @deny (delete) Authenticated user cannot delete another user's expense record.
-     * @principle Enforces document ownership. Only the authenticated user can access their own expense details.
+     * @allow (create, get, update, delete) - User C0FJa5JCmGcQC0mOILvEBxxHcye2 creates, reads, updates, or deletes their expense record.
+     * @deny (create, get, update, delete) - User DUmmyId attempts to access expense record of C0FJa5JCmGcQC0mOILvEBxxHcye2.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/expenses/{expenseId} {
-      // Helper function to check if the request is made by the owner of the expense record.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Allow a user to get their own expense details.
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
 
-      // Allow a user to list their own expenses.
-      allow list: if isOwner(userId);
-
-      // Allow a user to create an expense record for themselves. The userId in the data must match.
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-      // Helper function to check if the user is the existing owner, and the document exists
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to update their own expense details, but only if they are the owner. The userId must not be changed.
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId;
-
-      // Allow a user to delete their own expense record, but only if they are the owner.
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
   }
 }
