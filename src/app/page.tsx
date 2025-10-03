@@ -7,12 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { doc, getDoc } from 'firebase/firestore';
 
 const GoogleIcon = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -38,6 +39,7 @@ const registerSchema = z.object({
 export default function Home() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
@@ -52,12 +54,27 @@ export default function Home() {
     defaultValues: { name: '', email: '', password: '' },
   });
 
+  const checkFinancialData = async (userId: string) => {
+    if (!firestore) return false;
+    const userDocRef = doc(firestore, 'users', userId);
+    const docSnap = await getDoc(userDocRef);
+    return docSnap.exists() && docSnap.data().salary;
+  };
+
+  const handleSuccessfulLogin = async (userId: string) => {
+    const hasData = await checkFinancialData(userId);
+    if (hasData) {
+      router.push('/dashboard');
+    } else {
+      router.push('/dashboard'); // Will show setup form
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      router.push('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      await handleSuccessfulLogin(result.user.uid);
     } catch (error) {
       console.error('Error signing in with Google', error);
       toast({ variant: 'destructive', title: 'Erro no Login', description: 'Não foi possível fazer login com o Google.' });
@@ -66,8 +83,8 @@ export default function Home() {
 
   const handleEmailLogin = async (values: z.infer<typeof loginSchema>) => {
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/dashboard');
+      const result = await signInWithEmailAndPassword(auth, values.email, values.password);
+      await handleSuccessfulLogin(result.user.uid);
     } catch (error) {
       console.error('Error signing in with email', error);
       toast({ variant: 'destructive', title: 'Erro no Login', description: 'Email ou senha inválidos.' });
@@ -78,7 +95,7 @@ export default function Home() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
-      router.push('/dashboard');
+      await handleSuccessfulLogin(userCredential.user.uid);
     } catch (error: any) {
       console.error('Error registering with email', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -99,9 +116,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/dashboard');
+        handleSuccessfulLogin(user.uid);
     }
-  }, [user, isUserLoading, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading]);
 
   if (isUserLoading || user) {
     return (
