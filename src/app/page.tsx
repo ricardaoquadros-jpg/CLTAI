@@ -57,8 +57,13 @@ export default function Home() {
   const checkFinancialData = async (userId: string) => {
     if (!firestore) return false;
     const userDocRef = doc(firestore, 'users', userId);
-    const docSnap = await getDoc(userDocRef);
-    return docSnap.exists() && docSnap.data().salary;
+    try {
+      const docSnap = await getDoc(userDocRef);
+      return docSnap.exists() && docSnap.data().salary;
+    } catch (error) {
+      console.error("Error checking financial data:", error);
+      return false;
+    }
   };
 
   const handleSuccessfulLogin = async (userId: string) => {
@@ -66,12 +71,13 @@ export default function Home() {
     if (hasData) {
       router.push('/dashboard');
     } else {
-      router.push('/dashboard'); // Will show setup form
+      router.push('/dashboard'); // Will show setup form anyway
     }
   };
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+    if (!auth) return;
     try {
       const result = await signInWithPopup(auth, provider);
       await handleSuccessfulLogin(result.user.uid);
@@ -82,16 +88,22 @@ export default function Home() {
   };
 
   const handleEmailLogin = async (values: z.infer<typeof loginSchema>) => {
+    if (!auth) return;
     try {
       const result = await signInWithEmailAndPassword(auth, values.email, values.password);
       await handleSuccessfulLogin(result.user.uid);
-    } catch (error) {
-      console.error('Error signing in with email', error);
-      toast({ variant: 'destructive', title: 'Erro no Login', description: 'Email ou senha inválidos.' });
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        toast({ variant: 'destructive', title: 'Erro no Login', description: 'Email ou senha inválidos.' });
+      } else {
+        console.error('Error signing in with email', error);
+        toast({ variant: 'destructive', title: 'Erro no Login', description: 'Ocorreu um erro inesperado.' });
+      }
     }
   }
 
   const handleEmailRegister = async (values: z.infer<typeof registerSchema>) => {
+    if (!auth) return;
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
@@ -119,7 +131,7 @@ export default function Home() {
         handleSuccessfulLogin(user.uid);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, router]);
 
   if (isUserLoading || user) {
     return (
@@ -163,7 +175,7 @@ export default function Home() {
                 <TabsTrigger value="login">Entrar</TabsTrigger>
                 <TabsTrigger value="register">Criar Conta</TabsTrigger>
               </TabsList>
-              <TabsContent value="login" className="space-y-4">
+              <TabsContent value="login" className="space-y-4 pt-4">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(handleEmailLogin)} className="space-y-4">
                     <FormField
@@ -200,17 +212,17 @@ export default function Home() {
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
+                    <span className="bg-card px-2 text-muted-foreground">
                       Ou continue com
                     </span>
                   </div>
                 </div>
                 <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
                   <GoogleIcon />
-                  Entrar com o Google
+                  <span className="ml-2">Entrar com o Google</span>
                 </Button>
               </TabsContent>
-              <TabsContent value="register">
+              <TabsContent value="register" className="pt-4">
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(handleEmailRegister)} className="space-y-4">
                     <FormField
@@ -263,3 +275,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
