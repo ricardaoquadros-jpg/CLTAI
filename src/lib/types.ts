@@ -6,14 +6,17 @@ export interface Salary {
   frequency: SalaryFrequency;
 }
 
+export type TransactionType = 'income' | 'expense';
 export type ExpenseCategory = 'Lazer' | 'Mercado' | 'Investimento' | 'Transporte' | 'Saúde' | 'Educação' | 'Moradia' | 'Outros';
 
-export interface Expense {
+export interface Transaction {
   id: string;
   description: string;
   amount: number;
-  date: string;
+  date: string; // ISO 8601 string
+  type: TransactionType;
   category: ExpenseCategory;
+  balanceBefore: number;
 }
 
 export interface Investment {

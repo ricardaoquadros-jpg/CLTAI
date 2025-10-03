@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, collection, deleteField } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import type { FinancialData, Expense, Investment } from '@/lib/types';
+import type { FinancialData, Transaction, Investment } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
-import { ExpenseTracker } from '@/components/dashboard/ExpenseTracker';
+import { FinancialHistory } from '@/components/dashboard/FinancialHistory';
 import Header from '@/components/dashboard/Header';
 import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent, PiggyBank } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,13 +80,13 @@ export default function DashboardPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
-  const expensesRef = useMemoFirebase(() => {
+  const transactionsRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return collection(firestore, 'users', user.uid, 'expenses');
+    return collection(firestore, 'users', user.uid, 'transactions');
   }, [firestore, user]);
 
   const { data: financialData, isLoading: isFinancialDataLoading } = useDoc<FinancialData>(financialDataRef);
-  const { data: expenses, isLoading: areExpensesLoading } = useCollection<Expense>(expensesRef);
+  const { data: transactions, isLoading: areTransactionsLoading } = useCollection<Transaction>(transactionsRef);
 
   const [realTimeEarnings, setRealTimeEarnings] = useState(0);
   const [realTimeMonthEarnings, setRealTimeMonthEarnings] = useState(0);
@@ -295,6 +295,26 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
+  const sortedTransactions = useMemo(() => {
+    return transactions ? [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
+  }, [transactions]);
+  
+  const currentBankBalance = useMemo(() => {
+    if (!financialData) return 0;
+    if (!transactions || transactions.length === 0) return financialData.bankBalance;
+  
+    // Find the latest transaction
+    const latestTransaction = sortedTransactions[0];
+  
+    // Calculate the balance after the latest transaction
+    const balanceAfterLastTx = latestTransaction.type === 'income' 
+      ? latestTransaction.balanceBefore + latestTransaction.amount 
+      : latestTransaction.balanceBefore - latestTransaction.amount;
+  
+    return balanceAfterLastTx;
+  }, [financialData, transactions, sortedTransactions]);
+
+
   const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
     if (financialDataRef && user) {
       const initialProfile = {
@@ -312,29 +332,32 @@ export default function DashboardPage() {
     }
   };
   
-  const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'date'>) => {
-    if (expensesRef) {
-      const newExpense = {
-        ...expenseData,
-        date: new Date().toISOString(),
+  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore'>) => {
+    if (transactionsRef && financialData) {
+      // Find the balance before this new transaction
+      const balanceBefore = currentBankBalance;
+      
+      const newTransaction: Omit<Transaction, 'id'> = {
+        ...transactionData,
+        balanceBefore: balanceBefore,
       };
-      addDocumentNonBlocking(expensesRef, newExpense);
+      addDocumentNonBlocking(transactionsRef, newTransaction);
     }
   };
 
-  const handleUpdateExpense = (id: string, updatedData: Omit<Expense, 'id' | 'date'>) => {
+  const handleUpdateTransaction = (id: string, updatedData: Omit<Transaction, 'id' | 'date' | 'balanceBefore'>) => {
     if (!firestore || !user) return;
-    const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', id);
-    updateDocumentNonBlocking(expenseDocRef, updatedData);
+    const transactionDocRef = doc(firestore, 'users', user.uid, 'transactions', id);
+    updateDocumentNonBlocking(transactionDocRef, updatedData);
   }
 
-  const handleDeleteExpense = (id: string) => {
-    if (!firestore || !user || !expenses) return;
-    const expenseToDelete = expenses.find(exp => exp.id === id);
-    if (!expenseToDelete) return;
+  const handleDeleteTransaction = (id: string) => {
+    if (!firestore || !user || !transactions) return;
+    const transactionToDelete = transactions.find(exp => exp.id === id);
+    if (!transactionToDelete) return;
     
-    const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', id);
-    deleteDocumentNonBlocking(expenseDocRef);
+    const transactionDocRef = doc(firestore, 'users', user.uid, 'transactions', id);
+    deleteDocumentNonBlocking(transactionDocRef);
   };
   
   const handleReset = () => {
@@ -353,22 +376,22 @@ export default function DashboardPage() {
       };
       updateDocumentNonBlocking(financialDataRef, resetData);
     }
-    if (expenses) {
-      expenses.forEach(expense => {
+    if (transactions) {
+      transactions.forEach(transaction => {
         if(user && firestore) {
-          const expenseDocRef = doc(firestore, 'users', user.uid, 'expenses', expense.id);
-          deleteDocumentNonBlocking(expenseDocRef);
+          const transactionDocRef = doc(firestore, 'users', user.uid, 'transactions', transaction.id);
+          deleteDocumentNonBlocking(transactionDocRef);
         }
       })
     }
     setRealTimeEarnings(0);
   }
 
-  const totalExpenses = useMemo(() => {
-    return expenses ? expenses.reduce((sum, expense) => sum + expense.amount, 0) : 0;
-  }, [expenses]);
+  const totalExpensesMonth = useMemo(() => {
+    return transactions ? transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) : 0;
+  }, [transactions]);
 
-  if (isUserLoading || isFinancialDataLoading || areExpensesLoading) {
+  if (isUserLoading || isFinancialDataLoading || areTransactionsLoading) {
     return <div className="flex min-h-screen w-full flex-col items-center justify-center"><p>Carregando...</p></div>;
   }
 
@@ -379,7 +402,7 @@ export default function DashboardPage() {
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   
-  const bankBalance = financialData.bankBalance - totalExpenses;
+  const bankBalance = currentBankBalance;
   const netWorth = bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings;
   
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
@@ -391,7 +414,7 @@ export default function DashboardPage() {
   const formattedEarningsPerHour = formatCurrency(earningsPerHour);
   const formattedBankBalance = formatCurrency(bankBalance);
   const formattedInvestments = formatCurrency(totalInvestedAmount);
-  const formattedTotalExpenses = formatCurrency(totalExpenses);
+  const formattedTotalExpenses = formatCurrency(totalExpensesMonth);
   const formattedSalary = formatCurrency(financialData.salary.amount);
   const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);
   const formattedRealTimeInvestmentEarnings = formatInvestmentCurrency(realTimeInvestmentEarnings);
@@ -632,11 +655,11 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
             
-            <ExpenseTracker 
-              expenses={expenses || []} 
-              onAddExpense={handleAddExpense}
-              onUpdateExpense={handleUpdateExpense}
-              onDeleteExpense={handleDeleteExpense}
+            <FinancialHistory 
+              transactions={sortedTransactions || []} 
+              onAddTransaction={handleAddTransaction}
+              onUpdateTransaction={handleUpdateTransaction}
+              onDeleteTransaction={handleDeleteTransaction}
             />
           </div>
         </div>
@@ -644,7 +667,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
