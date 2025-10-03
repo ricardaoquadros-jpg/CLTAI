@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, deleteField } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Expense, Investment } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
@@ -337,15 +337,17 @@ export default function DashboardPage() {
   
   const handleReset = () => {
     if (financialDataRef && user) {
-       const resetData: Partial<FinancialData> = {
-        salary: { amount: 0, frequency: 'monthly' },
-        bankBalance: 0,
-        investments: [],
-        startTime: '09:00',
-        endTime: '18:00',
-        workDays: [],
-        hoursPerDay: 8,
-        totalWorkHoursInMonth: 0,
+       const resetData = {
+        salary: deleteField(),
+        bankBalance: deleteField(),
+        investments: deleteField(),
+        startTime: deleteField(),
+        endTime: deleteField(),
+        breakStartTime: deleteField(),
+        breakEndTime: deleteField(),
+        hoursPerDay: deleteField(),
+        workDays: deleteField(),
+        totalWorkHoursInMonth: deleteField(),
       };
       setDocumentNonBlocking(financialDataRef, resetData, { merge: true });
     }
