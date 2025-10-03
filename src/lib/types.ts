@@ -1,4 +1,5 @@
 
+
 export type SalaryFrequency = 'hourly' | 'daily' | 'monthly_business_days' | 'monthly' | 'monthly_work_hours';
 
 export interface Salary {

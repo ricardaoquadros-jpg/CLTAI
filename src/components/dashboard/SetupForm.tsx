@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -42,7 +43,7 @@ const investmentSchema = z.object({
 const formSchema = z.object({
   salaryAmount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
   salaryFrequency: z.enum(['monthly', 'monthly_work_hours']),
-  bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }).optional(),
+  bankBalance: z.coerce.number().nonnegative({ message: 'O saldo não pode ser negativo.' }),
   investments: z.array(z.object({
     id: z.string(),
     description: z.string(),
@@ -263,7 +264,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     defaultValues: {
       salaryAmount: undefined,
       salaryFrequency: 'monthly_work_hours',
-      bankBalance: undefined,
+      bankBalance: 0,
       investments: [],
       startTime: '09:00',
       endTime: '18:00',
@@ -385,17 +386,13 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   
   function onSubmit(values: z.infer<typeof formSchema>) {
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
-    
-    const finalBankBalance = (values.bankBalance === undefined || values.bankBalance === null || values.bankBalance === 0) 
-      ? values.salaryAmount 
-      : values.bankBalance;
-    
+        
     const dataToSave: Omit<FinancialData, 'uid' | 'email' | 'displayName'> = {
       salary: {
         amount: values.salaryAmount,
         frequency: values.salaryFrequency as FinancialData['salary']['frequency'],
       },
-      bankBalance: finalBankBalance,
+      bankBalance: values.bankBalance,
       investments: values.investments,
       startTime: values.startTime,
       endTime: values.endTime,
@@ -652,7 +649,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                           <Input type="number" placeholder="10000" className="pl-10" {...field} value={field.value ?? ''} />
                         </FormControl>
                     </div>
-                    <FormDescription>O valor total que você tem em suas contas bancárias. Se não informado, será considerado o valor do salário.</FormDescription>
+                    <FormDescription>O valor que você tem em conta para começar.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -301,7 +301,7 @@ export default function DashboardPage() {
   
   const currentBankBalance = useMemo(() => {
     if (!financialData) return 0;
-    if (!transactions || transactions.length === 0) return financialData.bankBalance;
+    if (!transactions || transactions.length === 0) return 0;
   
     // Find the latest transaction
     const latestTransaction = sortedTransactions[0];
@@ -316,7 +316,7 @@ export default function DashboardPage() {
 
 
   const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
-    if (financialDataRef && user) {
+    if (financialDataRef && user && transactionsRef) {
       const initialProfile = {
         uid: user.uid,
         email: user.email,
@@ -324,7 +324,19 @@ export default function DashboardPage() {
         ...data
       };
       setDocumentNonBlocking(financialDataRef, initialProfile, { merge: false });
+
+      // Create initial transaction
+      const initialTransaction: Omit<Transaction, 'id'> = {
+        description: 'Saldo Inicial',
+        amount: data.bankBalance,
+        date: new Date().toISOString(),
+        type: 'income',
+        category: 'Outros',
+        balanceBefore: 0, // This is the very first transaction
+      };
+      addDocumentNonBlocking(transactionsRef, initialTransaction);
     }
+
     setRealTimeEarnings(0);
     setWorkdayProgress(0);
     if (typeof window !== 'undefined') {
@@ -364,7 +376,6 @@ export default function DashboardPage() {
     if (financialDataRef && user) {
        const resetData = {
         salary: deleteField(),
-        bankBalance: deleteField(),
         investments: deleteField(),
         startTime: deleteField(),
         endTime: deleteField(),
@@ -403,7 +414,7 @@ export default function DashboardPage() {
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   
   const bankBalance = currentBankBalance;
-  const netWorth = bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings;
+  const netWorth = bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings - totalExpensesMonth;
   
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
