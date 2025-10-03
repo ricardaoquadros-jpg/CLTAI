@@ -43,7 +43,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onUpdateExpense, onDele
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: '',
-      amount: 0,
+      amount: undefined,
       category: 'Outros',
     },
   });
@@ -64,7 +64,7 @@ export function ExpenseTracker({ expenses, onAddExpense, onUpdateExpense, onDele
 
   function onAddSubmit(values: z.infer<typeof formSchema>) {
     onAddExpense(values);
-    form.reset({ description: '', amount: 0, category: 'Outros' });
+    form.reset({ description: '', amount: undefined, category: 'Outros' });
   }
 
   function onEditSubmit(values: z.infer<typeof formSchema>) {
@@ -109,13 +109,28 @@ export function ExpenseTracker({ expenses, onAddExpense, onUpdateExpense, onDele
                       control={form.control}
                       name="amount"
                       render={({ field }) => (
-                          <FormItem>
+                        <FormItem>
                           <FormLabel className="sr-only">Valor</FormLabel>
-                          <FormControl>
-                              <Input type="number" placeholder="Valor" {...field} />
-                          </FormControl>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                              R$
+                            </span>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Valor"
+                                className="pl-10"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? undefined : Number(value));
+                                }}
+                              />
+                            </FormControl>
+                          </div>
                           <FormMessage />
-                          </FormItem>
+                        </FormItem>
                       )}
                     />
                      <FormField
