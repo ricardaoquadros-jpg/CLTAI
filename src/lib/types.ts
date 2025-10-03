@@ -22,6 +22,9 @@ export interface Investment {
 }
 
 export interface FinancialData {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
   salary: Salary;
   bankBalance: number;
   investments: Investment[];
@@ -33,3 +36,5 @@ export interface FinancialData {
   workDays: number[];    // Array of numbers 0 (Sun) to 6 (Sat)
   totalWorkHoursInMonth: number;
 }
+
+    

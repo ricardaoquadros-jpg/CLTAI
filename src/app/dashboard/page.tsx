@@ -76,7 +76,7 @@ export default function DashboardPage() {
 
   const financialDataRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'users', user.uid, 'data', 'financial');
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
   const expensesRef = useMemoFirebase(() => {
@@ -146,7 +146,7 @@ export default function DashboardPage() {
   }, [financialData]);
   
   const totalDailyEarnings = useMemo(() => {
-      if (!financialData) return 0;
+      if (!financialData || !financialData.salary) return 0;
       if (financialData.salary.frequency === 'monthly') {
         const daysInCurrentMonth = getDaysInMonth(new Date());
         return financialData.salary.amount / daysInCurrentMonth;
@@ -155,7 +155,7 @@ export default function DashboardPage() {
   }, [financialData, earningsPerSecond]);
 
   const weeklyEarnings = useMemo(() => {
-    if (!financialData) return 0;
+    if (!financialData || !financialData.salary) return 0;
     if (financialData.salary.frequency === 'monthly') {
       return totalDailyEarnings * 7;
     }
@@ -167,7 +167,7 @@ export default function DashboardPage() {
   }, [earningsPerSecond]);
 
   useEffect(() => {
-    if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime) {
+    if (!financialData || !financialData.workDays || !financialData.startTime || !financialData.endTime || !financialData.salary) {
       return;
     }
 
@@ -295,8 +295,14 @@ export default function DashboardPage() {
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
   const handleSetupComplete = (data: FinancialData) => {
-    if (financialDataRef) {
-      setDocumentNonBlocking(financialDataRef, data, { merge: true });
+    if (financialDataRef && user) {
+      const initialProfile = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        ...data
+      };
+      setDocumentNonBlocking(financialDataRef, initialProfile, { merge: false });
     }
     setRealTimeEarnings(0);
     setWorkdayProgress(0);
@@ -330,8 +336,18 @@ export default function DashboardPage() {
   };
   
   const handleReset = () => {
-    if (financialDataRef) {
-      setDocumentNonBlocking(financialDataRef, { salary: { amount: 0, frequency: 'monthly' }, bankBalance: 0, investments: [] }, { merge: false });
+    if (financialDataRef && user) {
+       const resetData: Partial<FinancialData> = {
+        salary: { amount: 0, frequency: 'monthly' },
+        bankBalance: 0,
+        investments: [],
+        startTime: '09:00',
+        endTime: '18:00',
+        workDays: [],
+        hoursPerDay: 8,
+        totalWorkHoursInMonth: 0,
+      };
+      setDocumentNonBlocking(financialDataRef, resetData, { merge: true });
     }
     if (expenses) {
       expenses.forEach(expense => {
@@ -352,7 +368,7 @@ export default function DashboardPage() {
     return <div className="flex min-h-screen w-full flex-col items-center justify-center"><p>Carregando...</p></div>;
   }
 
-  if (!financialData) {
+  if (!financialData || !financialData.salary) {
     return <SetupForm onSetupComplete={handleSetupComplete} />;
   }
 
@@ -622,3 +638,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

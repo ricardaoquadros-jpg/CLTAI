@@ -71,7 +71,7 @@ const weekDaysMap = [
 ] as const;
 
 interface SetupFormProps {
-  onSetupComplete: (data: FinancialData) => void;
+  onSetupComplete: (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => void;
 }
 
 const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omit<Investment, 'id'>) => void }) => {
@@ -703,3 +703,5 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     </div>
   );
 }
+
+    
