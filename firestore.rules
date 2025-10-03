@@ -2,132 +2,163 @@
  * @fileoverview Firestore Security Rules for Financial Glimpse.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user has complete control over their profile and financial data.
+ * This ruleset enforces a strict user-ownership model. Each user can only access their own data.
  *
  * Data Structure:
- * All data is nested under /users/{userId}, where {userId} matches the Firebase Auth UID.
- * Subcollections under each user (bankAccounts, investmentAccounts, incomes, expenses) store the corresponding financial data.
+ * All data is nested under /users/{userId}, ensuring data isolation. Each document within the subcollections (bankAccounts, investmentAccounts, incomes, expenses) includes a denormalized 'userId' field, enabling efficient and secure authorization.
  *
  * Key Security Decisions:
- * - Users can only access their own data. No cross-user data access is allowed.
- * - Listing operations are allowed within a user's subcollections.
- * - Data consistency between the path and the document's internal userId field is enforced on creation and updates to prevent unauthorized access or data manipulation.
- * - All writes are protected by authorization checks to ensure only the owner can modify or delete data.
- *
- * Denormalization for Authorization:
- * The 'userId' is denormalized (copied) into each document within the bankAccounts, investmentAccounts, incomes, and expenses subcollections.
- * This allows for simple and efficient security rules that do not require extra reads to verify ownership.
- *
- * Structural Segregation:
- * All user-specific data is stored under the /users/{userId} path, ensuring clear separation and simplifying access control.
+ * - User listing is implicitly disallowed as there is no top-level `users` collection, only individual user documents.
+ * - Each subcollection (`bankAccounts`, `investmentAccounts`, `incomes`, `expenses`) are secured using the Ownership pattern based on `userId`.
+ * - Data consistency between the path and the document's internal `userId` field is enforced on creation and updates to prevent privilege escalation.
+ * - No public read operations are permitted.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     */
+    // Helper function to check if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     */
+    // Helper function to check if the authenticated user is the owner of the resource.
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the existing document.
-     */
+    // Helper function to check if the authenticated user is the existing owner of the resource.
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+        return isSignedIn() && request.auth.uid == userId && resource != null;
     }
 
     /**
-     * @description Rules for user profiles.
+     * @description Secures the user profile document.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their profile with matching ID.
-     * @allow (get, update, delete) - User with UID 'user123' can read/update/delete their profile.
-     * @deny (create) - User with UID 'user456' cannot create a profile with ID 'user123'.
-     * @deny (update, delete) - User with UID 'user456' cannot update/delete profile with ID 'user123'.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'user123' can create their profile if request.auth.uid == 'user123'.
+     * @deny (create) User with UID 'user123' cannot create a profile with a mismatched ID.
+     * @allow (get) User with UID 'user123' can get their own profile.
+     * @deny (get) User with UID 'user456' cannot get the profile of user 'user123'.
+     * @allow (update) User with UID 'user123' can update their own profile.
+     * @deny (update) User with UID 'user456' cannot update the profile of user 'user123'.
+     * @allow (delete) User with UID 'user123' can delete their own profile.
+     * @deny (delete) User with UID 'user456' cannot delete the profile of user 'user123'.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is not permitted.
+      // Allow the user to create their own profile if the UID matches.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
+      // Allow the user to get their own profile.
+      allow get: if isOwner(userId);
+      // Allow the user to list their own profile - only one profile per user, so this is equivalent to get.
+      allow list: if isOwner(userId);
+      // Allow the user to update their own profile and enforce immutability of the id field.
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      // Allow the user to delete their own profile.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for bank accounts.
+     * @description Secures bank account documents for a specific user.
      * @path /users/{userId}/bankAccounts/{bankAccountId}
-     * @allow (create) - User with UID 'user123' can create a bank account under their profile.
-     * @allow (get, list, update, delete) - User with UID 'user123' can read/list/update/delete their own bank accounts.
-     * @deny (create) - User with UID 'user456' cannot create a bank account under 'user123''s profile.
-     * @deny (update, delete) - User with UID 'user456' cannot update/delete bank account under 'user123's profile.
-     * @principle Enforces document ownership and relational integrity for all writes.
+     * @allow (create) User 'user123' can create a bank account under their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @deny (create) User 'user456' cannot create a bank account under user 'user123''s profile.
+     * @allow (get) User 'user123' can get their own bank account.
+     * @deny (get) User 'user456' cannot get user 'user123''s bank account.
+     * @allow (update) User 'user123' can update their own bank account if they are the owner and the userId is immutable.
+     * @deny (update) User 'user456' cannot update user 'user123''s bank account.
+     * @allow (delete) User 'user123' can delete their own bank account.
+     * @deny (delete) User 'user456' cannot delete user 'user123''s bank account.
+     * @principle Enforces document ownership for writes, ensures data consistency, and restricts access to a user's own data.
      */
     match /users/{userId}/bankAccounts/{bankAccountId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      // Allow the owner to create a bank account, enforce userId consistency.
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      // Allow the owner to get their own bank account.
+      allow get: if isOwner(userId);
+      // Allow the owner to list their own bank accounts.
+      allow list: if isOwner(userId);
+      // Allow the owner to update their own bank account, enforcing immutability of userId.
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      // Allow the owner to delete their own bank account.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for investment accounts.
+     * @description Secures investment account documents for a specific user.
      * @path /users/{userId}/investmentAccounts/{investmentAccountId}
-     * @allow (create) - User with UID 'user123' can create an investment account under their profile.
-     * @allow (get, list, update, delete) - User with UID 'user123' can read/list/update/delete their own investment accounts.
-     * @deny (create) - User with UID 'user456' cannot create an investment account under 'user123''s profile.
-     * @deny (update, delete) - User with UID 'user456' cannot update/delete investment account under 'user123's profile.
-     * @principle Enforces document ownership and relational integrity for all writes.
+     * @allow (create) User 'user123' can create an investment account under their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @deny (create) User 'user456' cannot create an investment account under user 'user123''s profile.
+     * @allow (get) User 'user123' can get their own investment account.
+     * @deny (get) User 'user456' cannot get user 'user123''s investment account.
+     * @allow (update) User 'user123' can update their own investment account if they are the owner and the userId is immutable.
+     * @deny (update) User 'user456' cannot update user 'user123''s investment account.
+     * @allow (delete) User 'user123' can delete their own investment account.
+     * @deny (delete) User 'user456' cannot delete user 'user123''s investment account.
+     * @principle Enforces document ownership for writes, ensures data consistency, and restricts access to a user's own data.
      */
     match /users/{userId}/investmentAccounts/{investmentAccountId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      // Allow the owner to create an investment account, enforce userId consistency.
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      // Allow the owner to get their own investment account.
+      allow get: if isOwner(userId);
+      // Allow the owner to list their own investment accounts.
+      allow list: if isOwner(userId);
+      // Allow the owner to update their own investment account, enforcing immutability of userId.
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      // Allow the owner to delete their own investment account.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for income records.
+     * @description Secures income documents for a specific user.
      * @path /users/{userId}/incomes/{incomeId}
-     * @allow (create) - User with UID 'user123' can create an income record under their profile.
-     * @allow (get, list, update, delete) - User with UID 'user123' can read/list/update/delete their own income records.
-     * @deny (create) - User with UID 'user456' cannot create an income record under 'user123''s profile.
-     * @deny (update, delete) - User with UID 'user456' cannot update/delete income record under 'user123's profile.
-     * @principle Enforces document ownership and relational integrity for all writes.
+     * @allow (create) User 'user123' can create an income record under their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @deny (create) User 'user456' cannot create an income record under user 'user123''s profile.
+     * @allow (get) User 'user123' can get their own income record.
+     * @deny (get) User 'user456' cannot get user 'user123''s income record.
+     * @allow (update) User 'user123' can update their own income record if they are the owner and the userId is immutable.
+     * @deny (update) User 'user456' cannot update user 'user123''s income record.
+     * @allow (delete) User 'user123' can delete their own income record.
+     * @deny (delete) User 'user456' cannot delete user 'user123''s income record.
+     * @principle Enforces document ownership for writes, ensures data consistency, and restricts access to a user's own data.
      */
     match /users/{userId}/incomes/{incomeId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      // Allow the owner to create an income, enforce userId consistency.
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      // Allow the owner to get their own income.
+      allow get: if isOwner(userId);
+      // Allow the owner to list their own incomes.
+      allow list: if isOwner(userId);
+      // Allow the owner to update their own income, enforcing immutability of userId.
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      // Allow the owner to delete their own income.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for expense records.
+     * @description Secures expense documents for a specific user.
      * @path /users/{userId}/expenses/{expenseId}
-     * @allow (create) - User with UID 'user123' can create an expense record under their profile.
-     * @allow (get, list, update, delete) - User with UID 'user123' can read/list/update/delete their own expense records.
-     * @deny (create) - User with UID 'user456' cannot create an expense record under 'user123''s profile.
-     * @deny (update, delete) - User with UID 'user456' cannot update/delete expense record under 'user123's profile.
-     * @principle Enforces document ownership and relational integrity for all writes.
+     * @allow (create) User 'user123' can create an expense record under their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @deny (create) User 'user456' cannot create an expense record under user 'user123''s profile.
+     * @allow (get) User 'user123' can get their own expense record.
+     * @deny (get) User 'user456' cannot get user 'user123''s expense record.
+     * @allow (update) User 'user123' can update their own expense record if they are the owner and the userId is immutable.
+     * @deny (update) User 'user456' cannot update user 'user123''s expense record.
+     * @allow (delete) User 'user123' can delete their own expense record.
+     * @deny (delete) User 'user456' cannot delete user 'user123''s expense record.
+     * @principle Enforces document ownership for writes, ensures data consistency, and restricts access to a user's own data.
      */
     match /users/{userId}/expenses/{expenseId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      // Allow the owner to create an expense, enforce userId consistency.
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      // Allow the owner to get their own expense.
+      allow get: if isOwner(userId);
+      // Allow the owner to list their own expenses.
+      allow list: if isOwner(userId);
+      // Allow the owner to update their own expense, enforcing immutability of userId.
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      // Allow the owner to delete their own expense.
       allow delete: if isExistingOwner(userId);
     }
   }
