@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile in the Financial Glimpse application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user profile."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name."
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "BankAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BankAccount",
+      "type": "object",
+      "description": "Represents a user's bank account details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the bank account."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N BankAccount)"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Name of the bank account."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current balance in the bank account."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "accountName",
+        "balance"
+      ]
+    },
+    "InvestmentAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InvestmentAccount",
+      "type": "object",
+      "description": "Represents a user's investment account details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the investment account."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N InvestmentAccount)"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Name of the investment account."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current balance in the investment account."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "accountName",
+        "balance"
+      ]
+    },
+    "Income": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Income",
+      "type": "object",
+      "description": "Represents a user's income details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the income record."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Income)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of income."
+        },
+        "frequency": {
+          "type": "string",
+          "description": "Frequency of income (e.g., daily, weekly, monthly)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "amount",
+        "frequency"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense record for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the expense."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Expense)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the expense.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the expense."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the expense."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "amount",
+        "description"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information. This collection uses the Firebase Auth UID as the document ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/bankAccounts/{bankAccountId}",
+        "definition": {
+          "entityName": "BankAccount",
+          "schema": {
+            "$ref": "#/backend/entities/BankAccount"
+          },
+          "description": "Stores bank account information for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "bankAccountId",
+              "description": "The unique ID of the bank account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/investmentAccounts/{investmentAccountId}",
+        "definition": {
+          "entityName": "InvestmentAccount",
+          "schema": {
+            "$ref": "#/backend/entities/InvestmentAccount"
+          },
+          "description": "Stores investment account information for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "investmentAccountId",
+              "description": "The unique ID of the investment account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/incomes/{incomeId}",
+        "definition": {
+          "entityName": "Income",
+          "schema": {
+            "$ref": "#/backend/entities/Income"
+          },
+          "description": "Stores income information for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "incomeId",
+              "description": "The unique ID of the income record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores expense information for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique ID of the expense record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure data isolation and efficient querying. User profiles and their associated data (bank accounts, investment accounts, income, and expenses) are stored under the `/users/{userId}` path. This path-based ownership provides clear data isolation and simplifies security rules. Each user's data is directly accessible, eliminating the need for complex queries across collections.\n\nTo achieve Authorization Independence, the `userId` is embedded within each subcollection document (BankAccount, InvestmentAccount, Income, Expense). This denormalization is CRITICAL. Without it, security rules would need to perform costly and brittle `get()` operations to verify ownership on every read/write, breaking atomic operations (transactions/batches).\n\nThis structure supports required QAPs because listing operations can be securely performed at each subcollection level (e.g. `/users/{userId}/bankAccounts`) without needing to filter based on user identity within the rules. The path-based structure inherently restricts access to data owned by the user identified by the `{userId}`."
+  }
+}
