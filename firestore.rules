@@ -1,200 +1,200 @@
 /**
- * @fileoverview Firestore Security Rules for Financial Glimpse application.
+ * @fileoverview Firestore Security Rules for Financial Glimpse
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model.  Each user has a dedicated
- * data tree under `/users/{userId}`.  Only the authenticated user with the matching
- * UID can read and write their own data.
+ * This ruleset enforces a strict user-ownership model. Each user can only
+ * access their own profile data and associated financial records.
  *
  * Data Structure:
- * All data is nested under /users/{userId}, including profile information,
- * bank accounts, investment accounts, income, and expenses. This structure
- * ensures clear data isolation and simplifies security rules.
+ * All data is nested under /users/{userId}, where {userId} corresponds to the
+ * Firebase Auth UID. This structure ensures data isolation and simplifies
+ * security rules.  Each document in the subcollections (bankAccounts,
+ * investmentAccounts, incomes, expenses) contains a denormalized userId field
+ * for authorization purposes.
  *
  * Key Security Decisions:
- * - Listing of user profiles (the `/users` collection) is disallowed. Only
- *   authenticated users can access their own profile via `get`.
- * - All write operations are validated against the authenticated user's UID
- *   to prevent unauthorized data modification.
- * - The 'userId' is denormalized within each subcollection document (BankAccount,
- *   InvestmentAccount, Income, Expense) to create Authorization Independence.
- *   This allows direct validation without additional `get()` calls.
+ * - User listing is disallowed to prevent unauthorized discovery of user
+ *   accounts.
+ * - All write operations are restricted to the owner of the data, based on
+ *   the Firebase Auth UID.
+ * - Data validation is limited to relational integrity and authorization
+ *   fields to allow for rapid prototyping.
  *
  * Denormalization for Authorization:
- * The 'userId' is embedded within each subcollection document to enable direct
- * authorization checks. For example, a BankAccount document has a 'userId' field
- * that must match the UID in `request.auth.uid` for any write operation.
- *
- * Structural Segregation:
- * All private user data is stored under the `/users/{userId}` path, ensuring
- * that there is no mixing of public and private data within the same collection.
+ * The 'userId' field is denormalized into each document within the
+ * bankAccounts, investmentAccounts, incomes, and expenses subcollections. This
+ * avoids costly and potentially insecure `get()` operations in the security
+ * rules, ensuring that ownership can be validated directly on the document
+ * being accessed.  This is critical for maintaining data integrity and
+ * preventing unauthorized access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is made by a signed-in user.
-     * @principle: This is a fundamental check for ensuring that only authenticated users can access the data.
+     * @description Protects the root of the database, preventing any unauthorized access.
+     * @path /
+     * @allow get, list: Never.  This is the root, no read access granted.
+     * @allow create, update, delete: Never.  This is the root, no write access granted.
+     * @principle Prevents accidental access to the database root.
      */
-    function isSignedIn() {
-      return request.auth != null;
+    match /{document=**} {
+      allow read, write: if false;
     }
 
     /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     * @principle: This function is used to enforce user-ownership on documents and collections.
-     * @param {string} userId - The user ID to compare against the authenticated user's UID.
-     * @return {bool} - True if the user is signed in and the UID matches, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-     /**
-      * @description Checks if the authenticated user is the existing owner of a document.
-      * @principle: Protects against modifying or deleting non-existent documents or data owned by other users.
-      * @param {string} userId - The user ID to compare against the authenticated user's UID.
-      * @return {bool} - True if the user is signed in, the UID matches, and the resource exists.
-      */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-
-    /**
-     * @description Enforces user-ownership for profile data stored under /users/{userId}.
+     * @description Manages user profile access. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (get) - Authenticated user can get their own profile.
-     * @allow (create) - Authenticated user can create their own profile if the userId matches their UID.
-     * @allow (update) - Authenticated user can update their own profile if the userId matches their UID.
-     * @allow (delete) - Authenticated user can delete their own profile if the userId matches their UID.
-     * @deny (list) - Listing all users is prohibited.
-     * @principle Enforces document ownership for reads and writes.
+     * @allow get: if isSignedIn() && isOwner(userId);
+     * @allow list: if false; // User listing is not permitted.
+     * @allow create: if isSignedIn() && isOwner(userId);
+     * @allow update: if isSignedIn() && isExistingOwner(userId);
+     * @allow delete: if isSignedIn() && isExistingOwner(userId);
+     * @deny get: if !isSignedIn() || !isOwner(userId);
+     * @deny create: if !isSignedIn() || !isOwner(userId);
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId);
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId);
+     * @principle Enforces document ownership for all read and write operations.  Validates ownership on create and enforces immutability of the userId on update.
      */
     match /users/{userId} {
-      // Get: Allow the user to read their own profile.
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // User listing is not permitted.
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
 
-      // List: Prevent listing all users.
-      allow list: if false;
-
-      // Create: Allow creating a profile if the userId matches the authenticated user's UID.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-
-      // Update: Allow updating a profile if the userId matches the authenticated user's UID and the id field is immutable.
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-
-      // Delete: Allow deleting a profile if the userId matches the authenticated user's UID.
-      allow delete: if isExistingOwner(userId);
-
-      /**
-       * @description Enforces user-ownership for bank account data stored under /users/{userId}/bankAccounts/{bankAccountId}.
-       * @path /users/{userId}/bankAccounts/{bankAccountId}
-       * @allow (get) - Authenticated user can get their own bank account.
-       * @allow (create) - Authenticated user can create their own bank account if the userId matches their UID.
-       * @allow (update) - Authenticated user can update their own bank account if the userId matches their UID.
-       * @allow (delete) - Authenticated user can delete their own bank account if the userId matches their UID.
-       * @deny (list) - Listing all bank accounts is prohibited.
-       * @principle Enforces document ownership for reads and writes.
-       */
-      match /bankAccounts/{bankAccountId} {
-        // Get: Allow the user to read their own bank account.
-        allow get: if isOwner(userId);
-
-        // List: Allow the user to list their own bank accounts.
-        allow list: if isOwner(userId);
-
-        // Create: Allow creating a bank account if the userId matches the authenticated user's UID and the userId field matches the path.
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-        // Update: Allow updating a bank account if the userId matches the authenticated user's UID and the userId field is immutable.
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-
-        // Delete: Allow deleting a bank account if the userId matches the authenticated user's UID.
-        allow delete: if isExistingOwner(userId);
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
       }
 
-       /**
-        * @description Enforces user-ownership for investment account data stored under /users/{userId}/investmentAccounts/{investmentAccountId}.
-        * @path /users/{userId}/investmentAccounts/{investmentAccountId}
-        * @allow (get) - Authenticated user can get their own investment account.
-        * @allow (create) - Authenticated user can create their own investment account if the userId matches their UID.
-        * @allow (update) - Authenticated user can update their own investment account if the userId matches their UID.
-        * @allow (delete) - Authenticated user can delete their own investment account if the userId matches their UID.
-        * @deny (list) - Listing all investment accounts is prohibited.
-        * @principle Enforces document ownership for reads and writes.
-        */
-      match /investmentAccounts/{investmentAccountId} {
-          // Get: Allow the user to read their own investment account.
-          allow get: if isOwner(userId);
-
-          // List: Allow the user to list their own investment accounts.
-          allow list: if isOwner(userId);
-
-          // Create: Allow creating an investment account if the userId matches the authenticated user's UID and the userId field matches the path.
-          allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-          // Update: Allow updating an investment account if the userId matches the authenticated user's UID and the userId field is immutable.
-          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-
-          // Delete: Allow deleting an investment account if the userId matches the authenticated user's UID.
-          allow delete: if isExistingOwner(userId);
-        }
-
-      /**
-       * @description Enforces user-ownership for income data stored under /users/{userId}/incomes/{incomeId}.
-       * @path /users/{userId}/incomes/{incomeId}
-       * @allow (get) - Authenticated user can get their own income.
-       * @allow (create) - Authenticated user can create their own income if the userId matches their UID.
-       * @allow (update) - Authenticated user can update their own income if the userId matches their UID.
-       * @allow (delete) - Authenticated user can delete their own income if the userId matches their UID.
-       * @deny (list) - Listing all incomes is prohibited.
-       * @principle Enforces document ownership for reads and writes.
-       */
-      match /incomes/{incomeId} {
-          // Get: Allow the user to read their own income.
-          allow get: if isOwner(userId);
-
-          // List: Allow the user to list their own incomes.
-          allow list: if isOwner(userId);
-
-          // Create: Allow creating an income if the userId matches the authenticated user's UID and the userId field matches the path.
-          allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-          // Update: Allow updating an income if the userId matches the authenticated user's UID and the userId field is immutable.
-          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-
-          // Delete: Allow deleting an income if the userId matches the authenticated user's UID.
-          allow delete: if isExistingOwner(userId);
-        }
-
-      /**
-       * @description Enforces user-ownership for expense data stored under /users/{userId}/expenses/{expenseId}.
-       * @path /users/{userId}/expenses/{expenseId}
-       * @allow (get) - Authenticated user can get their own expense.
-       * @allow (create) - Authenticated user can create their own expense if the userId matches their UID.
-       * @allow (update) - Authenticated user can update their own expense if the userId matches their UID.
-       * @allow (delete) - Authenticated user can delete their own expense if the userId matches their UID.
-       * @deny (list) - Listing all expenses is prohibited.
-       * @principle Enforces document ownership for reads and writes.
-       */
-      match /expenses/{expenseId} {
-        // Get: Allow the user to read their own expense.
-        allow get: if isOwner(userId);
-
-        // List: Allow the user to list their own expenses.
-        allow list: if isOwner(userId);
-
-        // Create: Allow creating an expense if the userId matches the authenticated user's UID and the userId field matches the path.
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-
-        // Update: Allow updating an expense if the userId matches the authenticated user's UID and the userId field is immutable.
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-
-        // Delete: Allow deleting an expense if the userId matches the authenticated user's UID.
-        allow delete: if isExistingOwner(userId);
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
+    }
+
+    /**
+     * @description Manages bank account access for a specific user. Only the owner can read/write.
+     * @path /users/{userId}/bankAccounts/{bankAccountId}
+     * @allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+     * @allow list: if isSignedIn() && isOwner(userId);
+     * @allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+     * @allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId;
+     * @allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+     * @deny get: if !isSignedIn() || !isOwner(userId) || resource.data.userId != userId;
+     * @deny create: if !isSignedIn() || !isOwner(userId) || request.resource.data.userId != userId;
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId) || request.resource.data.userId != userId;
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId) || resource.data.userId != userId;
+     * @principle Enforces strict user-ownership of bank account data. Validates 'userId' on create and update.
+     */
+    match /users/{userId}/bankAccounts/{bankAccountId} {
+      allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+    }
+
+    /**
+     * @description Manages investment account access for a specific user. Only the owner can read/write.
+     * @path /users/{userId}/investmentAccounts/{investmentAccountId}
+     * @allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+     * @allow list: if isSignedIn() && isOwner(userId);
+     * @allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+     * @allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId;
+     * @allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+     * @deny get: if !isSignedIn() || !isOwner(userId) || resource.data.userId != userId;
+     * @deny create: if !isSignedIn() || !isOwner(userId) || request.resource.data.userId != userId;
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId) || request.resource.data.userId != userId;
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId) || resource.data.userId != userId;
+     * @principle Enforces strict user-ownership of investment account data. Validates 'userId' on create and update.
+     */
+    match /users/{userId}/investmentAccounts/{investmentAccountId} {
+      allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+    }
+
+    /**
+     * @description Manages income data access for a specific user. Only the owner can read/write.
+     * @path /users/{userId}/incomes/{incomeId}
+     * @allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+     * @allow list: if isSignedIn() && isOwner(userId);
+     * @allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+     * @allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId;
+     * @allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+     * @deny get: if !isSignedIn() || !isOwner(userId) || resource.data.userId != userId;
+     * @deny create: if !isSignedIn() || !isOwner(userId) || request.resource.data.userId != userId;
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId) || request.resource.data.userId != userId;
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId) || resource.data.userId != userId;
+     * @principle Enforces strict user-ownership of income data. Validates 'userId' on create and update.
+     */
+    match /users/{userId}/incomes/{incomeId} {
+      allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+    }
+
+    /**
+     * @description Manages expense data access for a specific user. Only the owner can read/write.
+     * @path /users/{userId}/expenses/{expenseId}
+     * @allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+     * @allow list: if isSignedIn() && isOwner(userId);
+     * @allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+     * @allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId;
+     * @allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+     * @deny get: if !isSignedIn() || !isOwner(userId) || resource.data.userId != userId;
+     * @deny create: if !isSignedIn() || !isOwner(userId) || request.resource.data.userId != userId;
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId) || request.resource.data.userId != userId;
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId) || resource.data.userId != userId;
+     * @principle Enforces strict user-ownership of expense data. Validates 'userId' on create and update.
+     */
+    match /users/{userId}/expenses/{expenseId} {
+      allow get: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.userId == userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId) && resource.data.userId == userId;
+
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
