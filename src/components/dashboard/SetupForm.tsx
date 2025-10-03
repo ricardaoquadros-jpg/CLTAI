@@ -384,14 +384,13 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   }, [investments]);
   
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // We can derive the workdays from the selected dates to be more accurate
     const finalWorkDays = [...new Set(selectedDates.map(d => d.getDay()))].sort();
     
     const finalBankBalance = (values.bankBalance === undefined || values.bankBalance === null || values.bankBalance === 0) 
       ? values.salaryAmount 
       : values.bankBalance;
     
-    onSetupComplete({
+    const dataToSave: Omit<FinancialData, 'uid' | 'email' | 'displayName'> = {
       salary: {
         amount: values.salaryAmount,
         frequency: values.salaryFrequency as FinancialData['salary']['frequency'],
@@ -400,12 +399,20 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       investments: values.investments,
       startTime: values.startTime,
       endTime: values.endTime,
-      breakStartTime: values.noBreak ? undefined : values.breakStartTime || undefined,
-      breakEndTime: values.noBreak ? undefined : values.breakEndTime || undefined,
+      ...(values.noBreak ? {} : { 
+          breakStartTime: values.breakStartTime || undefined, 
+          breakEndTime: values.breakEndTime || undefined 
+      }),
       hoursPerDay: values.hoursPerDay,
       workDays: finalWorkDays,
       totalWorkHoursInMonth: totalWorkHours,
-    });
+    };
+
+    // Remove empty break time fields to avoid sending undefined to Firestore
+    if (dataToSave.breakStartTime === '') delete dataToSave.breakStartTime;
+    if (dataToSave.breakEndTime === '') delete dataToSave.breakEndTime;
+
+    onSetupComplete(dataToSave);
   }
 
 
