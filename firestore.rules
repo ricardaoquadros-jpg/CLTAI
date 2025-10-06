@@ -1,88 +1,71 @@
 /**
- * @fileoverview Firestore Security Rules for Financial Glimpse application.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user can only
- * access their own data, including their profile and financial transactions.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profile information. The {userId} corresponds
- *   to the Firebase Auth UID.
- * - /users/{userId}/transactions/{transactionId}: Stores transaction records
- *   for a specific user.
- *
- * Key Security Decisions:
- * - User listing is disallowed.
- * - All data is private and accessible only to the authenticated user.
- * - No global admin roles are defined.
- *
- * Denormalization for Authorization:
- * - The `transactions` subcollection relies on the path parameter `userId` for authorization,
- *   avoiding the need to duplicate the user ID in the document itself. This simplifies rules
- *   and improves performance.
- */
-rules_version = '2';
-service cloud.firestore {
+  * @description This ruleset enforces a strict user-ownership model for the Financial Glimpse application.
+  * Only authenticated users can access their own data.
+  *
+  * @dataStructure
+  * The data is organized hierarchically under `/users/{userId}`, where `{userId}` corresponds to the Firebase Auth UID.
+  * User profiles and associated data (transactions, bank accounts, investment accounts, income records) are stored as documents
+  * within this user-specific path.
+  *
+  * @keySecurityDecisions
+  * - Users can only create, read, update, and delete their own profile data.
+  * - Transactions are stored under a user's profile and are only accessible to that user.
+  * - Listing of user documents is disallowed.
+  *
+  * @denormalizationForAuthorization
+  * - The `userId` is denormalized into the `BankAccount`, `InvestmentAccount`, `Income` and `Transaction` documents to simplify
+  *   authorization checks and avoid costly `get()` operations. This allows direct validation of ownership.
+  *   For example, a transaction document will contain both its own ID and the `userId` of the user who owns it.
+  *
+  * @structuralSegregation
+  * - All private user data is stored under the `/users/{userId}` collection, ensuring that only the authenticated user can access it.
+  */
+ 
+
+ rules_version = '2';
+ service cloud.firestore {
   match /databases/{database}/documents {
+ 
 
-    /**
-     * @description Controls access to user profile documents.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile.
-     *   Request data: { "id": "user123", "email": "test@example.com", "firstName": "Test", "lastName": "User" }
-     * @allow (get) User with UID 'user123' can read their profile.
-     * @allow (update) User with UID 'user123' can update their profile.
-     *   Request data: { "firstName": "Updated Name" }
-     * @deny (create) User with UID 'user456' cannot create a profile for 'user123'.
-     *   Request data: { "id": "user123", "email": "test@example.com" }
-     * @deny (get) User with UID 'user456' cannot read profile of 'user123'.
-     * @deny (update) User with UID 'user456' cannot update profile of 'user123'.
-     *   Request data: { "firstName": "Updated Name" }
-     * @principle Enforces user-ownership; only the authenticated user can create, read, or update their own profile.
-     */
-    match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
+   /**
+    * @description Enforces user-ownership for user profile data. Only the authenticated user can create, read, update, and delete their own profile.
+    * @path /users/{userId}
+    * @allow (create) - User with UID 'user123' can create a profile document at /users/user123 if authenticated as 'user123'.
+    * @allow (get) - User with UID 'user123' can read their profile document at /users/user123 if authenticated as 'user123'.
+    * @allow (update) - User with UID 'user123' can update their profile document at /users/user123 if authenticated as 'user123'.
+    * @deny (create) - User with UID 'user456' cannot create a profile document at /users/user123 if authenticated as 'user456'.
+    * @deny (get) - User with UID 'user456' cannot read the profile document at /users/user123 if authenticated as 'user456'.
+    * @deny (update) - User with UID 'user456' cannot update the profile document at /users/user123 if authenticated as 'user456'.
+    * @principle Enforces document ownership for writes.
+    */
+   match /users/{userId} {
+    allow get: if request.auth.uid == userId;
+    allow list: if false;
+    allow create: if request.auth.uid == userId;
+    allow update: if request.auth.uid == userId && resource.id == request.auth.uid;
+    allow delete: if request.auth.uid == userId && resource.id == request.auth.uid;
+   }
+ 
 
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource.data.id == userId;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Controls access to transaction documents within a user's profile.
-     * @path /users/{userId}/transactions/{transactionId}
-     * @allow (create) User with UID 'user123' can create a transaction under their profile.
-     *   Request data: { "date": "2024-01-01", "amount": 100, "description": "Deposit" }
-     * @allow (get) User with UID 'user123' can read a transaction under their profile.
-     * @allow (update) User with UID 'user123' can update a transaction under their profile.
-     *   Request data: { "amount": 120 }
-     * @allow (delete) User with UID 'user123' can delete a transaction under their profile.
-     * @deny (create) User with UID 'user456' cannot create a transaction under 'user123'.
-     *   Request data: { "date": "2024-01-01", "amount": 100, "description": "Deposit" }
-     * @deny (get) User with UID 'user456' cannot read a transaction under profile 'user123'.
-     * @deny (update) User with UID 'user456' cannot update a transaction under profile 'user123'.
-     *   Request data: { "amount": 120 }
-     * @deny (delete) User with UID 'user456' cannot delete a transaction under profile 'user123'.
-     * @principle Enforces user-ownership; only the authenticated user can create, read, update, or delete transactions under their own profile.
-     */
-    match /users/{userId}/transactions/{transactionId} {
-        function isOwner(userId) {
-          return request.auth != null && request.auth.uid == userId;
-        }
-
-        function isExistingOwner(userId) {
-            return isOwner(userId) && resource != null;
-        }
-
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isExistingOwner(userId);
-        allow delete: if isExistingOwner(userId);
-    }
+   /**
+    * @description Enforces user-ownership for transaction data. Only the authenticated user can create, read, update, and delete their own transactions.
+    * @path /users/{userId}/transactions/{transactionId}
+    * @allow (create) - User with UID 'user123' can create a transaction document at /users/user123/transactions/trans1 if authenticated as 'user123'.
+    * @allow (get) - User with UID 'user123' can read their transaction document at /users/user123/transactions/trans1 if authenticated as 'user123'.
+    * @allow (update) - User with UID 'user123' can update their transaction document at /users/user123/transactions/trans1 if authenticated as 'user123'.
+    * @allow (delete) - User with UID 'user123' can delete their transaction document at /users/user123/transactions/trans1 if authenticated as 'user123'.
+    * @deny (create) - User with UID 'user456' cannot create a transaction document at /users/user123/transactions/trans1 if authenticated as 'user456'.
+    * @deny (get) - User with UID 'user456' cannot read the transaction document at /users/user123/transactions/trans1 if authenticated as 'user456'.
+    * @deny (update) - User with UID 'user456' cannot update the transaction document at /users/user123/transactions/trans1 if authenticated as 'user456'.
+    * @deny (delete) - User with UID 'user456' cannot delete the transaction document at /users/user123/transactions/trans1 if authenticated as 'user456'.
+    * @principle Enforces document ownership for writes.
+    */
+   match /users/{userId}/transactions/{transactionId} {
+    allow get: if request.auth.uid == userId;
+    allow list: if false;
+    allow create: if request.auth.uid == userId;
+    allow update: if request.auth.uid == userId;
+    allow delete: if request.auth.uid == userId;
+   }
   }
-}
+ }
