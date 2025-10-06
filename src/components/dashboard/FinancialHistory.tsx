@@ -159,12 +159,10 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
             <CardTitle>Histórico Financeiro</CardTitle>
             <CardDescription>Registre e visualize suas transações financeiras.</CardDescription>
           </div>
-          {isDirty && (
-             <Button onClick={handleUpdateOrder} size="sm">
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Atualizar Saldos
-             </Button>
-          )}
+           <Button onClick={handleUpdateOrder} size="sm">
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Atualizar Saldos
+           </Button>
         </div>
       </CardHeader>
       <CardContent>
