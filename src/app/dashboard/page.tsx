@@ -586,7 +586,7 @@ export default function DashboardPage() {
   const inBreak = isDuringBreakHours(financialData.breakStartTime, financialData.breakEndTime);
   
   const bankBalance = currentBankBalance;
-  const netWorth = bankBalance + realTimeMonthEarnings + totalInvestedAmount + realTimeInvestmentEarnings - totalExpensesMonth;
+  const netWorth = bankBalance + totalInvestedAmount + realTimeInvestmentEarnings + realTimeMonthEarnings;
   
   const monthEarningsProgress = (realTimeMonthEarnings / financialData.salary.amount) * 100;
   
