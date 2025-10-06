@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -109,7 +110,6 @@ export default function Home() {
       await updateProfile(userCredential.user, { displayName: values.name });
       await handleSuccessfulLogin(userCredential.user.uid);
     } catch (error: any) {
-      console.error('Error registering with email', error);
       if (error.code === 'auth/email-already-in-use') {
         toast({
           variant: 'destructive',
