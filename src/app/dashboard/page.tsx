@@ -602,11 +602,11 @@ export default function DashboardPage() {
   const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);
   const formattedRealTimeInvestmentEarnings = formatInvestmentCurrency(realTimeInvestmentEarnings);
 
-  const monthlyBalanceData = [
+  const monthlyBreakdownData = [
     { category: 'Disponível', total: bankBalance },
-    { category: 'Despesas do Mês', total: totalExpensesMonth }
+    ...monthlyExpensesByCategory,
   ];
-  const totalMonthlyBalance = bankBalance + totalExpensesMonth;
+  const totalMonthlyBreakdown = bankBalance + totalExpensesMonth;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -861,12 +861,12 @@ export default function DashboardPage() {
                     totalValue={totalExpensesMonth}
                 />
               )}
-               {monthlyExpensesByCategory.length > 0 && (
+               {monthlyBreakdownData.length > 1 && (
                  <ExpensesChart 
-                    title="Balanço Mensal"
-                    description="Comparação entre o saldo disponível e as despesas totais do mês."
-                    data={monthlyBalanceData}
-                    totalValue={totalMonthlyBalance}
+                    title="Detalhamento Mensal"
+                    description="Comparação entre o saldo disponível e as categorias de despesas."
+                    data={monthlyBreakdownData}
+                    totalValue={totalMonthlyBreakdown}
                 />
                )}
            </div>
