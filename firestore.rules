@@ -1,75 +1,88 @@
 /**
- * @fileoverview Firestore Security Rules for Financial Glimpse.
+ * @fileoverview Firestore Security Rules for Financial Glimpse application.
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model. Each user can only
- * access their own profile data and associated transactions.
+ * access their own data, including their profile and financial transactions.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile data. The `userId` must match the
- *   Firebase Auth UID.
+ * - /users/{userId}: Stores user profile information. The {userId} corresponds
+ *   to the Firebase Auth UID.
  * - /users/{userId}/transactions/{transactionId}: Stores transaction records
- *   for a specific user. The `userId` segment in the path must match the
- *   Firebase Auth UID.
+ *   for a specific user.
  *
  * Key Security Decisions:
  * - User listing is disallowed.
+ * - All data is private and accessible only to the authenticated user.
+ * - No global admin roles are defined.
  *
  * Denormalization for Authorization:
- * - Transactions are stored as subcollections under the /users/{userId} path
- *   and each transaction document contains a `userId` field, which is redundant but makes the authorization rule simpler and more efficient because it doesn't require `get()` calls.
+ * - The `transactions` subcollection relies on the path parameter `userId` for authorization,
+ *   avoiding the need to duplicate the user ID in the document itself. This simplifies rules
+ *   and improves performance.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects the user profiles. Only the user can read, create, update, or delete their own profile.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) If the user is creating their own profile (auth.uid matches userId).
-     * @allow (get) If the user is reading their own profile (auth.uid matches userId).
-     * @allow (update) If the user is updating their own profile (auth.uid matches userId).
-     * @deny (create) If the user attempts to create a profile with a different userId than their auth.uid.
-     * @deny (get) If the user attempts to read a profile with a different userId than their auth.uid.
-     * @deny (update) If the user attempts to update a profile with a different userId than their auth.uid.
-     * @principle Enforces document ownership. Users can only access their own profile.
+     * @allow (create) User with UID 'user123' can create their profile.
+     *   Request data: { "id": "user123", "email": "test@example.com", "firstName": "Test", "lastName": "User" }
+     * @allow (get) User with UID 'user123' can read their profile.
+     * @allow (update) User with UID 'user123' can update their profile.
+     *   Request data: { "firstName": "Updated Name" }
+     * @deny (create) User with UID 'user456' cannot create a profile for 'user123'.
+     *   Request data: { "id": "user123", "email": "test@example.com" }
+     * @deny (get) User with UID 'user456' cannot read profile of 'user123'.
+     * @deny (update) User with UID 'user456' cannot update profile of 'user123'.
+     *   Request data: { "firstName": "Updated Name" }
+     * @principle Enforces user-ownership; only the authenticated user can create, read, or update their own profile.
      */
     match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource.data.id == userId;
       allow delete: if false;
     }
 
     /**
-     * @description Protects the transaction records for each user. Only the user can read or write their own transaction data.
+     * @description Controls access to transaction documents within a user's profile.
      * @path /users/{userId}/transactions/{transactionId}
-     * @allow (create) If the user is creating a transaction under their own user ID (auth.uid matches userId).
-     * @allow (get) If the user is reading a transaction under their own user ID (auth.uid matches userId).
-     * @allow (update) If the user is updating a transaction under their own user ID (auth.uid matches userId).
-     * @allow (delete) If the user is deleting a transaction under their own user ID (auth.uid matches userId).
-     * @deny (create) If the user attempts to create a transaction under a different user ID than their auth.uid.
-     * @deny (get) If the user attempts to read a transaction under a different user ID than their auth.uid.
-     * @deny (update) If the user attempts to update a transaction under a different user ID than their auth.uid.
-     * @deny (delete) If the user attempts to delete a transaction under a different user ID than their auth.uid.
-     * @principle Enforces document ownership. Users can only access their own transaction records.
+     * @allow (create) User with UID 'user123' can create a transaction under their profile.
+     *   Request data: { "date": "2024-01-01", "amount": 100, "description": "Deposit" }
+     * @allow (get) User with UID 'user123' can read a transaction under their profile.
+     * @allow (update) User with UID 'user123' can update a transaction under their profile.
+     *   Request data: { "amount": 120 }
+     * @allow (delete) User with UID 'user123' can delete a transaction under their profile.
+     * @deny (create) User with UID 'user456' cannot create a transaction under 'user123'.
+     *   Request data: { "date": "2024-01-01", "amount": 100, "description": "Deposit" }
+     * @deny (get) User with UID 'user456' cannot read a transaction under profile 'user123'.
+     * @deny (update) User with UID 'user456' cannot update a transaction under profile 'user123'.
+     *   Request data: { "amount": 120 }
+     * @deny (delete) User with UID 'user456' cannot delete a transaction under profile 'user123'.
+     * @principle Enforces user-ownership; only the authenticated user can create, read, update, or delete transactions under their own profile.
      */
     match /users/{userId}/transactions/{transactionId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
+        function isOwner(userId) {
+          return request.auth != null && request.auth.uid == userId;
+        }
+
+        function isExistingOwner(userId) {
+            return isOwner(userId) && resource != null;
+        }
+
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return isSignedIn() && request.auth.uid == userId;
   }
 }
