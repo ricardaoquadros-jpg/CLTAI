@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -209,7 +210,7 @@
           "description": "Stores transaction information for a specific user. Includes denormalized 'userId' for authorization independence.",
           "permissions": {
             "read": "request.auth.uid == userId",
-            "write": "request.auth.uid == userId"
+            "write": "request.auth.uid == userId && request.resource.data.userId == userId"
           },
           "params": [
             {

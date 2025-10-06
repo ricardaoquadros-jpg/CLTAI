@@ -37,8 +37,8 @@ const formSchema = z.object({
 
 interface FinancialHistoryProps {
   transactions: Transaction[];
-  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore'>) => void;
-  onUpdateTransaction: (id: string, transaction: Omit<Transaction, 'id' | 'date' | 'balanceBefore'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>) => void;
+  onUpdateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>>) => void;
   onDeleteTransaction: (id: string) => void;
   className?: string;
 }
@@ -81,7 +81,10 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
 
   function onEditSubmit(values: z.infer<typeof formSchema>) {
     if (editingTransaction) {
-      onUpdateTransaction(editingTransaction.id, values);
+      onUpdateTransaction(editingTransaction.id, {
+        ...values,
+        date: values.date.toISOString()
+      });
       setIsEditDialogOpen(false);
       setEditingTransaction(null);
     }
@@ -360,6 +363,35 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
                     </Select>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="date"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Data da Operação</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button variant="outline" className="pl-3 text-left font-normal">
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                                        <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
                 )}
               />
               <DialogFooter>

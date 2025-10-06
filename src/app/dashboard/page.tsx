@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, collection, deleteField } from 'firebase/firestore';
+import { doc, collection, deleteField, writeBatch } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Transaction, Investment, ExpenseCategory } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
@@ -339,6 +339,7 @@ export default function DashboardPage() {
 
       // Create initial transaction
       const initialTransaction: Omit<Transaction, 'id'> = {
+        userId: user.uid,
         description: 'Saldo Inicial',
         amount: data.bankBalance,
         date: new Date().toISOString(),
@@ -356,23 +357,69 @@ export default function DashboardPage() {
     }
   };
   
-  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore'>) => {
-    if (transactionsRef && financialData) {
+  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>) => {
+    if (transactionsRef && financialData && user) {
       // Find the balance before this new transaction
       const balanceBefore = currentBankBalance;
       
       const newTransaction: Omit<Transaction, 'id'> = {
         ...transactionData,
+        userId: user.uid,
         balanceBefore: balanceBefore,
       };
       addDocumentNonBlocking(transactionsRef, newTransaction);
     }
   };
 
-  const handleUpdateTransaction = (id: string, updatedData: Omit<Transaction, 'id' | 'date' | 'balanceBefore'>) => {
-    if (!firestore || !user) return;
-    const transactionDocRef = doc(firestore, 'users', user.uid, 'transactions', id);
-    updateDocumentNonBlocking(transactionDocRef, updatedData);
+  const handleUpdateTransaction = async (id: string, updatedData: Partial<Omit<Transaction, 'id' | 'userId'>>) => {
+    if (!firestore || !user || !transactions) return;
+    
+    // Create a write batch
+    const batch = writeBatch(firestore);
+
+    // 1. Recalculate balances for all transactions
+    const allTransactions = [...transactions];
+    const updatedTransactionIndex = allTransactions.findIndex(t => t.id === id);
+
+    if (updatedTransactionIndex === -1) return;
+
+    // Apply the update to our local copy
+    allTransactions[updatedTransactionIndex] = {
+        ...allTransactions[updatedTransactionIndex],
+        ...updatedData
+    };
+    
+    // 2. Sort all transactions chronologically
+    allTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // 3. Recalculate balanceBefore for each transaction and update if changed
+    let previousBalance = 0;
+    for (const tx of allTransactions) {
+        // Find the original transaction to check if balanceBefore has changed
+        const originalTx = transactions.find(t => t.id === tx.id);
+        const newBalanceBefore = previousBalance;
+
+        // Add to batch only if it's the edited transaction or if its balanceBefore has changed
+        if (tx.id === id || (originalTx && originalTx.balanceBefore !== newBalanceBefore)) {
+            const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
+            const dataToUpdate: Partial<Transaction> = {
+                balanceBefore: newBalanceBefore,
+            };
+
+            // If it's the one we're editing, include all its other updated fields
+            if (tx.id === id) {
+                Object.assign(dataToUpdate, updatedData);
+            }
+            batch.update(txRef, dataToUpdate);
+        }
+
+        previousBalance = tx.type === 'income' 
+            ? newBalanceBefore + tx.amount 
+            : newBalanceBefore - tx.amount;
+    }
+    
+    // 4. Commit the batch
+    await batch.commit();
   }
 
   const handleDeleteTransaction = (id: string) => {

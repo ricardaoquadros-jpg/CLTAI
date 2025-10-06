@@ -12,6 +12,7 @@ export type ExpenseCategory = 'Lazer' | 'Mercado' | 'Investimento' | 'Transporte
 
 export interface Transaction {
   id: string;
+  userId: string;
   description: string;
   amount: number;
   date: string; // ISO 8601 string
