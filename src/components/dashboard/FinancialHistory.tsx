@@ -297,7 +297,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
                 </Button>
             </form>
         </Form>
-        <ScrollArea className="h-72 pr-4 pt-10">
+        <ScrollArea className="h-96 pr-4 pt-10">
           <div className="space-y-4">
             {localTransactions.length > 0 ? (
               localTransactions.map((transaction, index) => {
