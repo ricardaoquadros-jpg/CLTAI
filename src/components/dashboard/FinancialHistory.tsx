@@ -235,39 +235,50 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
         <ScrollArea className="h-72 pr-4 pt-10">
           <div className="space-y-4">
             {transactions.length > 0 ? (
-              transactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
-                  <div className="flex items-center gap-3">
-                    {transaction.type === 'income' ? 
-                        <ArrowUpCircle className="h-5 w-5 text-green-500" /> : 
-                        <ArrowDownCircle className="h-5 w-5 text-red-500" />
-                    }
-                    <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(transaction.date), "dd/MM/yyyy")}
-                      </p>
-                      <Badge variant="outline" className="mt-1">{transaction.category}</Badge>
+              transactions.map((transaction) => {
+                const isInitialBalance = transaction.description === 'Saldo Inicial';
+                return (
+                  <div key={transaction.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
+                    <div className="flex items-center gap-3">
+                      {transaction.type === 'income' ? 
+                          <ArrowUpCircle className="h-5 w-5 text-green-500" /> : 
+                          <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                      }
+                      <div>
+                        <p className="font-medium">{transaction.description}</p>
+                        {!isInitialBalance && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(transaction.date), "dd/MM/yyyy")}
+                            </p>
+                            <Badge variant="outline" className="mt-1">{transaction.category}</Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-right">
+                      <div>
+                        <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                            {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Saldo anterior: {formatCurrency(transaction.balanceBefore)}
+                        </p>
+                      </div>
+                      {!isInitialBalance && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEditClick(transaction)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTransaction(transaction.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-right">
-                    <div>
-                      <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                          {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                          Saldo anterior: {formatCurrency(transaction.balanceBefore)}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEditClick(transaction)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTransaction(transaction.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
                 <p>Nenhuma transação registrada para este mês.</p>

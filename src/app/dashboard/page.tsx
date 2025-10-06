@@ -296,7 +296,13 @@ export default function DashboardPage() {
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
   const sortedTransactions = useMemo(() => {
-    return transactions ? [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
+    if (!transactions) return [];
+    const initialBalance = transactions.find(t => t.description === 'Saldo Inicial');
+    const otherTransactions = transactions
+      .filter(t => t.description !== 'Saldo Inicial')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    return initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
   }, [transactions]);
   
   const currentBankBalance = useMemo(() => {
@@ -328,7 +334,7 @@ export default function DashboardPage() {
         displayName: user.displayName,
         ...data
       };
-      setDocumentNonBlocking(financialDataRef, initialProfile, { merge: false });
+      setDocumentNonBlocking(financialDataRef, initialProfile, { merge: true });
 
       // Create initial transaction
       const initialTransaction: Omit<Transaction, 'id'> = {
