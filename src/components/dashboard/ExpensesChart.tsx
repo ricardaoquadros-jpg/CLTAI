@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from "@/lib/utils";
 
-interface MonthlyExpensesChartProps {
+interface ExpensesChartProps {
+  title: string;
+  description: string;
   data: { category: string; total: number }[];
+  totalValue: number;
 }
 
 const COLORS = [
@@ -37,7 +40,28 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function MonthlyExpensesChart({ data }: MonthlyExpensesChartProps) {
+const renderLegend = (props: any, totalValue: number) => {
+  const { payload } = props;
+
+  return (
+    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-3">
+      {payload.map((entry: any, index: number) => {
+        const percentage = totalValue > 0 ? (entry.payload.value / totalValue) * 100 : 0;
+        return (
+            <li key={`item-${index}`} className="flex items-center space-x-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-sm text-muted-foreground">{entry.value}</span>
+                <span className="text-sm font-semibold">{formatCurrency(entry.payload.value)}</span>
+                <span className="text-xs text-muted-foreground">({percentage.toFixed(1)}%)</span>
+            </li>
+        )
+      })}
+    </ul>
+  );
+};
+
+
+export function ExpensesChart({ title, description, data, totalValue }: ExpensesChartProps) {
   if (!data || data.length === 0) {
     return null;
   }
@@ -45,13 +69,14 @@ export function MonthlyExpensesChart({ data }: MonthlyExpensesChartProps) {
   return (
     <Card className="bg-[#1d2630] col-span-1 md:col-span-2">
       <CardHeader>
-        <CardTitle>Despesas do Mês por Categoria</CardTitle>
+        <CardTitle>{title}</CardTitle>
         <CardDescription>
-          Uma visão detalhada de onde seu dinheiro foi este mês.
+          {description}
         </CardDescription>
+        <p className="text-2xl font-bold pt-2">Total: {formatCurrency(totalValue)}</p>
       </CardHeader>
       <CardContent>
-        <div style={{ width: '100%', height: 300 }}>
+        <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer>
                 <PieChart>
                 <Pie
@@ -59,7 +84,7 @@ export function MonthlyExpensesChart({ data }: MonthlyExpensesChartProps) {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={80}
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="total"
                     nameKey="category"
@@ -69,7 +94,7 @@ export function MonthlyExpensesChart({ data }: MonthlyExpensesChartProps) {
                     ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
+                <Legend content={(props) => renderLegend(props, totalValue)} wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
             </ResponsiveContainer>
         </div>

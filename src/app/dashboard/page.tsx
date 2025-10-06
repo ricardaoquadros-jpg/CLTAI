@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { parse, getDaysInMonth, startOfYear, differenceInSeconds } from 'date-fns';
-import { MonthlyExpensesChart } from '@/components/dashboard/MonthlyExpensesChart';
+import { ExpensesChart } from '@/components/dashboard/ExpensesChart';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -338,8 +338,7 @@ export default function DashboardPage() {
       setDocumentNonBlocking(financialDataRef, initialProfile, { merge: true });
 
       // Create initial transaction
-      const initialTransaction: Omit<Transaction, 'id'> = {
-        userId: user.uid,
+      const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
         description: 'Saldo Inicial',
         amount: data.bankBalance,
         date: new Date().toISOString(),
@@ -347,7 +346,7 @@ export default function DashboardPage() {
         category: 'Outros',
         balanceBefore: 0, // This is the very first transaction
       };
-      addDocumentNonBlocking(transactionsRef, initialTransaction);
+      addDocumentNonBlocking(transactionsRef, { ...initialTransaction, userId: user.uid });
     }
 
     setRealTimeEarnings(0);
@@ -386,7 +385,8 @@ export default function DashboardPage() {
     // Apply the update to our local copy
     allTransactions[updatedTransactionIndex] = {
         ...allTransactions[updatedTransactionIndex],
-        ...updatedData
+        ...updatedData,
+        userId: user.uid,
     };
     
     // 2. Sort all transactions chronologically
@@ -399,17 +399,22 @@ export default function DashboardPage() {
         const originalTx = transactions.find(t => t.id === tx.id);
         const newBalanceBefore = previousBalance;
 
-        // Add to batch only if it's the edited transaction or if its balanceBefore has changed
-        if (tx.id === id || (originalTx && originalTx.balanceBefore !== newBalanceBefore)) {
-            const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
-            const dataToUpdate: Partial<Transaction> = {
-                balanceBefore: newBalanceBefore,
-            };
+        const dataToUpdate: Partial<Transaction> = {};
+        let needsUpdate = false;
 
-            // If it's the one we're editing, include all its other updated fields
-            if (tx.id === id) {
-                Object.assign(dataToUpdate, updatedData);
-            }
+        // If it's the edited transaction, it always needs an update.
+        if (tx.id === id) {
+            Object.assign(dataToUpdate, updatedData, { balanceBefore: newBalanceBefore });
+            needsUpdate = true;
+        } 
+        // If it's another transaction and its balanceBefore has changed, it needs an update.
+        else if (originalTx && originalTx.balanceBefore !== newBalanceBefore) {
+            dataToUpdate.balanceBefore = newBalanceBefore;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
             batch.update(txRef, dataToUpdate);
         }
 
@@ -480,6 +485,32 @@ export default function DashboardPage() {
                    transactionDate.getMonth() === currentMonth &&
                    transactionDate.getFullYear() === currentYear;
         });
+
+        const categoryMap = expenses.reduce((acc, expense) => {
+            if (!acc[expense.category]) {
+                acc[expense.category] = 0;
+            }
+            acc[expense.category] += expense.amount;
+            return acc;
+        }, {} as Record<ExpenseCategory, number>);
+
+        return Object.entries(categoryMap).map(([category, total]) => ({
+            category: category as ExpenseCategory,
+            total,
+        }));
+    }, [transactions]);
+
+    const totalAllTimeExpenses = useMemo(() => {
+        if (!transactions) return 0;
+        return transactions
+            .filter(t => t.type === 'expense')
+            .reduce((sum, t) => sum + t.amount, 0);
+    }, [transactions]);
+
+    const allExpensesByCategory = useMemo(() => {
+        if (!transactions) return [];
+        
+        const expenses = transactions.filter(t => t.type === 'expense');
 
         const categoryMap = expenses.reduce((acc, expense) => {
             if (!acc[expense.category]) {
@@ -769,7 +800,22 @@ export default function DashboardPage() {
           </div>
            {monthlyExpensesByCategory.length > 0 && (
              <div className="mt-8">
-                <MonthlyExpensesChart data={monthlyExpensesByCategory} />
+                <ExpensesChart 
+                    title="Despesas do Mês por Categoria"
+                    description="Uma visão detalhada de onde seu dinheiro foi este mês."
+                    data={monthlyExpensesByCategory}
+                    totalValue={totalExpensesMonth}
+                />
+            </div>
+           )}
+           {allExpensesByCategory.length > 0 && (
+             <div className="mt-8">
+                <ExpensesChart 
+                    title="Todas as Despesas por Categoria"
+                    description="Visão geral de todas as suas despesas."
+                    data={allExpensesByCategory}
+                    totalValue={totalAllTimeExpenses}
+                />
             </div>
            )}
         </div>
