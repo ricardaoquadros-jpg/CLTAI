@@ -264,9 +264,11 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
                         <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                             {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                            Saldo anterior: {formatCurrency(transaction.balanceBefore)}
-                        </p>
+                        {!isInitialBalance && (
+                          <p className="text-xs text-muted-foreground">
+                              Saldo anterior: {formatCurrency(transaction.balanceBefore)}
+                          </p>
+                        )}
                       </div>
                       {!isInitialBalance && (
                         <>
