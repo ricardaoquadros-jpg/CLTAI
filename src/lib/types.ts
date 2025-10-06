@@ -19,6 +19,10 @@ export interface Transaction {
   type: TransactionType;
   category: ExpenseCategory;
   balanceBefore: number;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  } | Date;
 }
 
 export interface Investment {

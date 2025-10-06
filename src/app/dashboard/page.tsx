@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, collection, deleteField, writeBatch } from 'firebase/firestore';
+import { doc, collection, deleteField, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Transaction, Investment, ExpenseCategory } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
@@ -296,26 +296,40 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [financialData, earningsPerSecond, totalDailyEarnings]);
 
-  const sortedTransactions = useMemo(() => {
+  const chronologicallySortedTransactions = useMemo(() => {
     if (!transactions) return [];
-    const initialBalance = transactions.find(t => t.description === 'Saldo Inicial');
-    const otherTransactions = transactions
+  
+    const toDate = (ts: any) => {
+      if (ts instanceof Date) return ts;
+      if (ts && typeof ts.seconds === 'number' && typeof ts.nanoseconds === 'number') {
+        return new Date(ts.seconds * 1000 + ts.nanoseconds / 1000000);
+      }
+      // Fallback for string dates, though createdAt should be a timestamp
+      return new Date(ts);
+    };
+  
+    return [...transactions].sort((a, b) => {
+      const dateA = toDate(a.createdAt || a.date);
+      const dateB = toDate(b.createdAt || b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [transactions]);
+  
+  const sortedTransactionsForDisplay = useMemo(() => {
+    const initialBalance = chronologicallySortedTransactions.find(t => t.description === 'Saldo Inicial');
+    const otherTransactions = chronologicallySortedTransactions
       .filter(t => t.description !== 'Saldo Inicial')
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .reverse(); // reverse for descending display order
     
     return initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
-  }, [transactions]);
+  }, [chronologicallySortedTransactions]);
   
   const currentBankBalance = useMemo(() => {
     if (!financialData) return 0;
     if (!transactions || transactions.length === 0) return financialData.bankBalance || 0;
-  
-    // Sort transactions by date to ensure chronological order for calculation
-    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    // Calculate final balance by iterating through all transactions
     let balance = 0;
-    sorted.forEach(tx => {
+    chronologicallySortedTransactions.forEach(tx => {
       if (tx.type === 'income') {
         balance += tx.amount;
       } else {
@@ -324,7 +338,7 @@ export default function DashboardPage() {
     });
   
     return balance;
-  }, [financialData, transactions]);
+  }, [financialData, transactions, chronologicallySortedTransactions]);
 
 
   const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
@@ -337,16 +351,17 @@ export default function DashboardPage() {
       };
       setDocumentNonBlocking(financialDataRef, initialProfile, { merge: true });
 
-      // Create initial transaction
-      const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
+      const initialTransaction = {
         description: 'Saldo Inicial',
         amount: data.bankBalance,
         date: new Date().toISOString(),
-        type: 'income',
-        category: 'Outros',
-        balanceBefore: 0, // This is the very first transaction
+        type: 'income' as const,
+        category: 'Outros' as const,
+        balanceBefore: 0,
+        createdAt: serverTimestamp(),
+        userId: user.uid
       };
-      addDocumentNonBlocking(transactionsRef, { ...initialTransaction, userId: user.uid });
+      addDocumentNonBlocking(transactionsRef, initialTransaction);
     }
 
     setRealTimeEarnings(0);
@@ -356,15 +371,15 @@ export default function DashboardPage() {
     }
   };
   
-  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>) => {
+  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt'>) => {
     if (transactionsRef && financialData && user) {
-      // Find the balance before this new transaction
       const balanceBefore = currentBankBalance;
       
-      const newTransaction: Omit<Transaction, 'id'> = {
+      const newTransaction = {
         ...transactionData,
         userId: user.uid,
         balanceBefore: balanceBefore,
+        createdAt: serverTimestamp(),
       };
       addDocumentNonBlocking(transactionsRef, newTransaction);
     }
@@ -373,57 +388,47 @@ export default function DashboardPage() {
   const handleUpdateTransaction = async (id: string, updatedData: Partial<Omit<Transaction, 'id' | 'userId'>>) => {
     if (!firestore || !user || !transactions) return;
     
-    // Create a write batch
     const batch = writeBatch(firestore);
 
-    // 1. Recalculate balances for all transactions
-    const allTransactions = [...transactions];
-    const updatedTransactionIndex = allTransactions.findIndex(t => t.id === id);
+    const tempUpdatedTransactions = transactions.map(t => 
+      t.id === id ? { ...t, ...updatedData } : t
+    );
 
-    if (updatedTransactionIndex === -1) return;
-
-    // Apply the update to our local copy
-    allTransactions[updatedTransactionIndex] = {
-        ...allTransactions[updatedTransactionIndex],
-        ...updatedData,
-        userId: user.uid,
+    const toDate = (ts: any) => {
+      if (ts instanceof Date) return ts;
+      if (ts && typeof ts.seconds === 'number' && typeof ts.nanoseconds === 'number') {
+        return new Date(ts.seconds * 1000 + ts.nanoseconds / 1000000);
+      }
+      return new Date(ts);
     };
-    
-    // 2. Sort all transactions chronologically
-    allTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // 3. Recalculate balanceBefore for each transaction and update if changed
+    tempUpdatedTransactions.sort((a, b) => {
+        const dateA = toDate(a.createdAt);
+        const dateB = toDate(b.createdAt);
+        return dateA.getTime() - dateB.getTime();
+    });
+
     let previousBalance = 0;
-    for (const tx of allTransactions) {
-        // Find the original transaction to check if balanceBefore has changed
-        const originalTx = transactions.find(t => t.id === tx.id);
-        const newBalanceBefore = previousBalance;
+    for (const tx of tempUpdatedTransactions) {
+      const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
+      
+      const updatePayload: any = {};
 
-        const dataToUpdate: Partial<Transaction> = {};
-        let needsUpdate = false;
+      if (tx.id === id) {
+        Object.assign(updatePayload, updatedData);
+      }
 
-        // If it's the edited transaction, it always needs an update.
-        if (tx.id === id) {
-            Object.assign(dataToUpdate, updatedData, { balanceBefore: newBalanceBefore });
-            needsUpdate = true;
-        } 
-        // If it's another transaction and its balanceBefore has changed, it needs an update.
-        else if (originalTx && originalTx.balanceBefore !== newBalanceBefore) {
-            dataToUpdate.balanceBefore = newBalanceBefore;
-            needsUpdate = true;
-        }
+      if (tx.balanceBefore !== previousBalance) {
+        updatePayload.balanceBefore = previousBalance;
+      }
 
-        if (needsUpdate) {
-            const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
-            batch.update(txRef, dataToUpdate);
-        }
-
-        previousBalance = tx.type === 'income' 
-            ? newBalanceBefore + tx.amount 
-            : newBalanceBefore - tx.amount;
+      if (Object.keys(updatePayload).length > 0) {
+        batch.update(txRef, updatePayload);
+      }
+      
+      previousBalance = tx.type === 'income' ? previousBalance + tx.amount : previousBalance - tx.amount;
     }
     
-    // 4. Commit the batch
     await batch.commit();
   }
 
@@ -792,7 +797,7 @@ export default function DashboardPage() {
             </Card>
             
             <FinancialHistory 
-              transactions={sortedTransactions || []} 
+              transactions={sortedTransactionsForDisplay || []} 
               onAddTransaction={handleAddTransaction}
               onUpdateTransaction={handleUpdateTransaction}
               onDeleteTransaction={handleDeleteTransaction}

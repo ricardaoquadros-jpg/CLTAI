@@ -37,7 +37,7 @@ const formSchema = z.object({
 
 interface FinancialHistoryProps {
   transactions: Transaction[];
-  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt'>) => void;
   onUpdateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>>) => void;
   onDeleteTransaction: (id: string) => void;
   className?: string;
