@@ -1,99 +1,89 @@
 /**
- * @fileoverview Firestore Security Rules for Financial Glimpse application.
+ * @fileoverview Firestore Security Rules for Financial Glimpse.
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model. Each user can only
- * access their own data, preventing unauthorized access to other users' financial information.
+ * access their own data, preventing unauthorized access to other users'
+ * financial information. The rules are designed to be secure-by-default,
+ * explicitly denying any access not specifically granted.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. The {userId} must match the
- *   Firebase Auth UID.
- * - /users/{userId}/transactions/{transactionId}: Stores transaction data for a specific user.
- *   Each transaction document contains a denormalized userId field.
+ * - /users/{userId}: Stores user profile information. The {userId} is
+ *   enforced to match the Firebase Auth UID.
+ * - /users/{userId}/transactions/{transactionId}: Stores transaction
+ *   information for each user. The userId path segment must match the userId
+ *   field within the transaction document.
  *
  * Key Security Decisions:
- * - Users can only read and write their own user profiles.
- * - Users can only read and write their own transaction data.
- * - Listing all users is disallowed.
+ * - User listing is disallowed to protect user privacy.
+ * - All write operations are validated against the authenticated user's UID
+ *   to ensure data integrity and prevent impersonation.
  *
  * Denormalization for Authorization:
- * The 'Transaction' documents contain the 'userId' field. This allows for direct
- * ownership checks on the transaction documents themselves, avoiding the need for
- * complex queries or additional reads to verify ownership.
- *
- * Structural Segregation:
- * All private user data is stored under the /users/{userId} path.
+ * - The `Transaction` documents in `/users/{userId}/transactions/{transactionId}`
+ *   include a `userId` field that must match the `userId` path segment.
+ *   This denormalization enables secure and efficient authorization checks
+ *   without requiring additional database reads.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    /**
-     * @description Checks if the request is authenticated.
-     * @return {boolean} True if the request is authenticated, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against the authenticated user ID.
-     * @return {boolean} True if the authenticated user ID matches the provided user ID, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the resource user ID and the document exists.
-     * @param {string} userId The user ID to compare against the authenticated user ID.
-     * @return {boolean} True if the authenticated user ID matches the provided user ID and the document exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rule for user profiles.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create a profile with id 'user123'.
-     * @allow (get) User with UID 'user123' can read their profile at /users/user123.
-     * @allow (update) User with UID 'user123' can update their profile at /users/user123.
-     * @allow (delete) User with UID 'user123' can delete their profile at /users/user123.
-     * @deny (create) User with UID 'user456' cannot create a profile with id 'user123'.
-     * @deny (get) User with UID 'user456' cannot read the profile at /users/user123.
-     * @deny (update) User with UID 'user456' cannot update the profile at /users/user123.
-     * @deny (delete) User with UID 'user456' cannot delete the profile at /users/user123.
-     * @principle Enforces document ownership for reads and writes.
+     * @allow (create) Authenticated user can create their own profile.
+     * @deny (create) Creating a profile with a mismatched userId.
+     * @allow (get, update, delete) Authenticated user can read/update/delete their own profile.
+     * @deny (get, update, delete) Accessing another user's profile.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rule for user transactions.
+     * @description Controls access to transaction documents for a specific user.
      * @path /users/{userId}/transactions/{transactionId}
-     * @allow (create) User with UID 'user123' can create a transaction under /users/user123/transactions.
-     * @allow (get) User with UID 'user123' can read their transaction at /users/user123/transactions/transaction1.
-     * @allow (list) User with UID 'user123' can list transactions under /users/user123/transactions.
-     * @allow (update) User with UID 'user123' can update their transaction at /users/user123/transactions/transaction1.
-     * @allow (delete) User with UID 'user123' can delete their transaction at /users/user123/transactions/transaction1.
-     * @deny (create) User with UID 'user456' cannot create a transaction under /users/user123/transactions.
-     * @deny (get) User with UID 'user456' cannot read a transaction under /users/user123/transactions/transaction1.
-     * @deny (list) User with UID 'user456' cannot list transactions under /users/user123/transactions.
-     * @deny (update) User with UID 'user456' cannot update a transaction under /users/user123/transactions/transaction1.
-     * @deny (delete) User with UID 'user456' cannot delete a transaction under /users/user123/transactions/transaction1.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) Authenticated user can create transactions for themselves.
+     * @deny (create) Creating a transaction with a mismatched userId.
+     * @allow (get, list, update, delete) Authenticated user can read/list/update/delete their own transactions.
+     * @deny (get, list, update, delete) Accessing another user's transactions.
+     * @principle Enforces document ownership and relational integrity.
      */
     match /users/{userId}/transactions/{transactionId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
   }
