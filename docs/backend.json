@@ -186,6 +186,11 @@
             "$ref": "#/backend/entities/UserProfile"
           },
           "description": "Stores user profile information, allowing creation, reading, and updates by the owner. This collection uses the Firebase Auth UID as the document ID.",
+          "permissions": {
+            "read": "request.auth.uid == userId",
+            "create": "request.auth.uid == userId",
+            "update": "request.auth.uid == userId"
+          },
           "params": [
             {
               "name": "userId",
@@ -202,6 +207,10 @@
             "$ref": "#/backend/entities/Transaction"
           },
           "description": "Stores transaction information for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "permissions": {
+            "read": "request.auth.uid == userId",
+            "write": "request.auth.uid == userId"
+          },
           "params": [
             {
               "name": "userId",
