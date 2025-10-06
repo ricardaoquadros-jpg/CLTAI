@@ -1,80 +1,75 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for the Financial Glimpse application.
+ * @fileoverview Firestore Security Rules for Financial Glimpse.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user can only
+ * access their own profile data and associated transactions.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. Each user document is identified by their Firebase Auth UID.
- * - /users/{userId}/transactions/{transactionId}: Stores transaction records for a specific user.
+ * - /users/{userId}: Stores user profile data. The `userId` must match the
+ *   Firebase Auth UID.
+ * - /users/{userId}/transactions/{transactionId}: Stores transaction records
+ *   for a specific user. The `userId` segment in the path must match the
+ *   Firebase Auth UID.
  *
  * Key Security Decisions:
- * - Users can only access their own data.
  * - User listing is disallowed.
  *
  * Denormalization for Authorization:
- * - The transaction documents at `/users/{userId}/transactions/{transactionId}` include the `userId` field, which is used to enforce ownership without additional reads.
+ * - Transactions are stored as subcollections under the /users/{userId} path
+ *   and each transaction document contains a `userId` field, which is redundant but makes the authorization rule simpler and more efficient because it doesn't require `get()` calls.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Protects the user profiles. Only the user can read, create, update, or delete their own profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their profile if request.auth.uid == 'user_abc'.
-     * @allow (get) User with UID 'user_abc' can read their profile if request.auth.uid == 'user_abc'.
-     * @allow (update) User with UID 'user_abc' can update their profile if request.auth.uid == 'user_abc'.
-     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
-     * @deny (get) User with UID 'user_xyz' cannot read the profile of 'user_abc'.
-     * @deny (update) User with UID 'user_xyz' cannot update the profile of 'user_abc'.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) If the user is creating their own profile (auth.uid matches userId).
+     * @allow (get) If the user is reading their own profile (auth.uid matches userId).
+     * @allow (update) If the user is updating their own profile (auth.uid matches userId).
+     * @deny (create) If the user attempts to create a profile with a different userId than their auth.uid.
+     * @deny (get) If the user attempts to read a profile with a different userId than their auth.uid.
+     * @deny (update) If the user attempts to update a profile with a different userId than their auth.uid.
+     * @principle Enforces document ownership. Users can only access their own profile.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if false;
     }
 
     /**
-     * @description Controls access to transaction documents within a user's profile.
+     * @description Protects the transaction records for each user. Only the user can read or write their own transaction data.
      * @path /users/{userId}/transactions/{transactionId}
-     * @allow (create) User with UID 'user_abc' can create a transaction if request.auth.uid == 'user_abc'.
-     * @allow (get) User with UID 'user_abc' can read a transaction if request.auth.uid == 'user_abc'.
-     * @allow (update) User with UID 'user_abc' can update a transaction if request.auth.uid == 'user_abc'.
-     * @allow (delete) User with UID 'user_abc' can delete a transaction if request.auth.uid == 'user_abc'.
-     * @deny (create) User with UID 'user_xyz' cannot create a transaction for 'user_abc'.
-     * @deny (get) User with UID 'user_xyz' cannot read a transaction of 'user_abc'.
-     * @deny (update) User with UID 'user_xyz' cannot update a transaction of 'user_abc'.
-     * @deny (delete) User with UID 'user_xyz' cannot delete a transaction of 'user_abc'.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) If the user is creating a transaction under their own user ID (auth.uid matches userId).
+     * @allow (get) If the user is reading a transaction under their own user ID (auth.uid matches userId).
+     * @allow (update) If the user is updating a transaction under their own user ID (auth.uid matches userId).
+     * @allow (delete) If the user is deleting a transaction under their own user ID (auth.uid matches userId).
+     * @deny (create) If the user attempts to create a transaction under a different user ID than their auth.uid.
+     * @deny (get) If the user attempts to read a transaction under a different user ID than their auth.uid.
+     * @deny (update) If the user attempts to update a transaction under a different user ID than their auth.uid.
+     * @deny (delete) If the user attempts to delete a transaction under a different user ID than their auth.uid.
+     * @principle Enforces document ownership. Users can only access their own transaction records.
      */
     match /users/{userId}/transactions/{transactionId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
     }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
   }
 }
