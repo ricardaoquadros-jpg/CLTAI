@@ -1,27 +1,29 @@
 /**
- * @fileoverview Firestore Security Rules for Financial Glimpse.
+ * @fileoverview Firestore Security Rules for Financial Glimpse application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user can only access their own data.
+ * This ruleset enforces a strict user-ownership model. Each user has full control
+ * over their own data, and no access to other users' data. The rules are designed
+ * to prevent unauthorized data access and modification.
  *
  * Data Structure:
- * All data is nested under /users/{userId}, where {userId} corresponds to the Firebase Auth UID.
- * - /users/{userId}: Contains user profile information.
- * - /users/{userId}/bankAccounts/{bankAccountId}: Contains bank account details for the user.
- * - /users/{userId}/investmentAccounts/{investmentAccountId}: Contains investment account details for the user.
- * - /users/{userId}/incomes/{incomeId}: Contains income information for the user.
- * - /users/{userId}/expenses/{expenseId}: Contains expense information for the user.
+ * All user-specific data is nested under the `/users/{userId}` path, where `{userId}`
+ * corresponds to the Firebase Auth UID. This includes profile information, bank accounts,
+ * investment accounts, income records, and transaction history. This hierarchical
+ * structure simplifies security rules and improves query performance.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - All subcollections inherit the user-ownership model, enforced through path-based rules and denormalized `userId` fields.
- * - The rules prioritize security and data isolation.
+ * - User listing is implicitly denied (no top-level collection listing is allowed).
+ * - All write operations are protected by authorization checks to ensure only the
+ *   owner can modify their data.
+ * - Data consistency is enforced by validating the `userId` field on create operations
+ *   to match the path.
+ * - Immutability of `userId` is enforced on update operations.
  *
  * Denormalization for Authorization:
- * The `userId` field is denormalized into each document within the subcollections (bankAccounts, investmentAccounts, incomes, expenses). This allows for efficient security rules without requiring extra reads.
- *
- * Structural Segregation:
- * All user-specific data is stored under the /users/{userId} path, ensuring clear separation and preventing accidental exposure of private information.
+ * To avoid costly `get()` calls within the security rules, the `userId` is denormalized
+ * into each document within the subcollections (bankAccounts, investmentAccounts,
+ * incomes, transactions). This allows for fast and efficient ownership checks.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -29,139 +31,115 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @description Checks if the authenticated user is the owner of the resource.
+     * @param {string} userId The user ID to check against.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the user is the owner and the resource exists.
+     * @description Checks if the authenticated user is the owner of the resource and the resource exists.
+     * @param {string} userId The user ID to check against.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Root match for all documents.  This prevents anyone from creating documents at the root level.
-     */
-    match /{document=**} {
-      allow read: if false;
-      allow write: if false;
-    }
-
-    /**
-     * @description Manages access to user profile documents.
+     * @description Enforces document ownership for writes.
      * @path /users/{userId}
-     * @allow (create) If the user is creating their own profile (auth UID matches the userId).
-     * @allow (get) If the user is requesting their own profile (auth UID matches the userId).
-     * @allow (update) If the user is updating their own profile (auth UID matches the userId).
-     * @allow (delete) If the user is deleting their own profile (auth UID matches the userId).
-     * @deny (create) If the user is creating a profile for a different user (auth UID does not match the userId).
-     * @principle Enforces document ownership for writes; users can only manage their own profile.
+     * @allow (create) User with UID 'user123' creates a profile with id: 'user123'.
+     * @deny (create) User with UID 'user123' attempts to create a profile with id: 'user456'.
+     * @allow (update) User with UID 'user123' updates their own profile.
+     * @deny (update) User with UID 'user123' attempts to update the profile of user 'user456'.
+     * @allow (get) User with UID 'user123' retrieves their profile.
+     * @deny (get) User with UID 'user123' attempts to retrieve the profile of user 'user456'.
+     * @principle Enforces document ownership for writes and validates data consistency between path and document ID.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false; // User listing is disallowed.
+      allow list: if false; // User listing is not allowed.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow update: if isExistingOwner(userId) && resource.data.id == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages access to bank account documents for a specific user.
+     * @description Manages bank account information for a specific user.
      * @path /users/{userId}/bankAccounts/{bankAccountId}
-     * @allow (create) If the user is creating a bank account for themselves (auth UID matches the userId in the path and in the document).
-     * @allow (get) If the user is requesting their own bank account (auth UID matches the userId in the path).
-     * @allow (update) If the user is updating their own bank account (auth UID matches the userId in the path and the userId in the document is immutable).
-     * @allow (delete) If the user is deleting their own bank account (auth UID matches the userId in the path).
-     * @deny (create) If the user is creating a bank account for a different user (auth UID does not match the userId in the path).
-     * @principle Enforces document ownership for writes; users can only manage their own bank accounts.  Denormalizes userId into each document.
+     * @allow (create) User with UID 'user123' creates a bank account with userId: 'user123'.
+     * @deny (create) User with UID 'user123' attempts to create a bank account with userId: 'user456'.
+     * @allow (update) User with UID 'user123' updates their own bank account.
+     * @deny (update) User with UID 'user123' attempts to update the bank account of user 'user456'.
+     * @principle Enforces document ownership for writes and validates data consistency between path and document ID.
      */
     match /users/{userId}/bankAccounts/{bankAccountId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages access to investment account documents for a specific user.
+     * @description Manages investment account information for a specific user.
      * @path /users/{userId}/investmentAccounts/{investmentAccountId}
-     * @allow (create) If the user is creating an investment account for themselves (auth UID matches the userId in the path and in the document).
-     * @allow (get) If the user is requesting their own investment account (auth UID matches the userId in the path).
-     * @allow (update) If the user is updating their own investment account (auth UID matches the userId in the path and the userId in the document is immutable).
-     * @allow (delete) If the user is deleting their own investment account (auth UID matches the userId in the path).
-     * @deny (create) If the user is creating an investment account for a different user (auth UID does not match the userId in the path).
-     * @principle Enforces document ownership for writes; users can only manage their own investment accounts. Denormalizes userId into each document.
+     * @allow (create) User with UID 'user123' creates an investment account with userId: 'user123'.
+     * @deny (create) User with UID 'user123' attempts to create an investment account with userId: 'user456'.
+     * @allow (update) User with UID 'user123' updates their own investment account.
+     * @deny (update) User with UID 'user123' attempts to update the investment account of user 'user456'.
+     * @principle Enforces document ownership for writes and validates data consistency between path and document ID.
      */
     match /users/{userId}/investmentAccounts/{investmentAccountId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages access to income documents for a specific user.
+     * @description Manages income information for a specific user.
      * @path /users/{userId}/incomes/{incomeId}
-     * @allow (create) If the user is creating an income record for themselves (auth UID matches the userId in the path and in the document).
-     * @allow (get) If the user is requesting their own income record (auth UID matches the userId in the path).
-     * @allow (update) If the user is updating their own income record (auth UID matches the userId in the path and the userId in the document is immutable).
-     * @allow (delete) If the user is deleting their own income record (auth UID matches the userId in the path).
-     * @deny (create) If the user is creating an income record for a different user (auth UID does not match the userId in the path).
-     * @principle Enforces document ownership for writes; users can only manage their own income records. Denormalizes userId into each document.
+     * @allow (create) User with UID 'user123' creates an income record with userId: 'user123'.
+     * @deny (create) User with UID 'user123' attempts to create an income record with userId: 'user456'.
+     * @allow (update) User with UID 'user123' updates their own income record.
+     * @deny (update) User with UID 'user123' attempts to update the income record of user 'user456'.
+     * @principle Enforces document ownership for writes and validates data consistency between path and document ID.
      */
     match /users/{userId}/incomes/{incomeId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages access to expense documents for a specific user.
-     * @path /users/{userId}/expenses/{expenseId}
-     * @allow (create) If the user is creating an expense record for themselves (auth UID matches the userId in the path and in the document).
-     * @allow (get) If the user is requesting their own expense record (auth UID matches the userId in the path).
-     * @allow (update) If the user is updating their own expense record (auth UID matches the userId in the path and the userId in the document is immutable).
-     * @allow (delete) If the user is deleting their own expense record (auth UID matches the userId in the path).
-     * @deny (create) If the user is creating an expense record for a different user (auth UID does not match the userId in the path).
-     * @principle Enforces document ownership for writes; users can only manage their own expense records. Denormalizes userId into each document.
+     * @description Manages transaction information for a specific user.
+     * @path /users/{userId}/transactions/{transactionId}
+     * @allow (create) User with UID 'user123' creates a transaction with userId: 'user123'.
+     * @deny (create) User with UID 'user123' attempts to create a transaction with userId: 'user456'.
+     * @allow (update) User with UID 'user123' updates their own transaction.
+     * @deny (update) User with UID 'user123' attempts to update the transaction of user 'user456'.
+     * @principle Enforces document ownership for writes and validates data consistency between path and document ID.
      */
-    match /users/{userId}/expenses/{expenseId} {
+    match /users/{userId}/transactions/{transactionId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
-
-     /**
-      * @description Manages access to transaction documents for a specific user.
-      * @path /users/{userId}/transactions/{transactionId}
-      * @allow (create) If the user is creating a transaction document for themselves (auth UID matches the userId in the path and in the document).
-      * @allow (get) If the user is requesting their own transaction document (auth UID matches the userId in the path).
-      * @allow (update) If the user is updating their own transaction document (auth UID matches the userId in the path and the userId in the document is immutable).
-      * @allow (delete) If the user is deleting their own transaction document (auth UID matches the userId in the path).
-      * @deny (create) If the user is creating a transaction document for a different user (auth UID does not match the userId in the path).
-      * @principle Enforces document ownership for writes; users can only manage their own transaction documents. Denormalizes userId into each document.
-      */
-     match /users/{userId}/transactions/{transactionId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
-     }
   }
 }

@@ -185,71 +185,11 @@
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profile information. This collection uses the Firebase Auth UID as the document ID.",
+          "description": "Stores user profile information, allowing creation, reading, and updates by the owner. This collection uses the Firebase Auth UID as the document ID.",
           "params": [
             {
               "name": "userId",
               "description": "The Firebase Auth UID of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/bankAccounts/{bankAccountId}",
-        "definition": {
-          "entityName": "BankAccount",
-          "schema": {
-            "$ref": "#/backend/entities/BankAccount"
-          },
-          "description": "Stores bank account information for a specific user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Auth UID of the user."
-            },
-            {
-              "name": "bankAccountId",
-              "description": "The unique ID of the bank account."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/investmentAccounts/{investmentAccountId}",
-        "definition": {
-          "entityName": "InvestmentAccount",
-          "schema": {
-            "$ref": "#/backend/entities/InvestmentAccount"
-          },
-          "description": "Stores investment account information for a specific user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Auth UID of the user."
-            },
-            {
-              "name": "investmentAccountId",
-              "description": "The unique ID of the investment account."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/incomes/{incomeId}",
-        "definition": {
-          "entityName": "Income",
-          "schema": {
-            "$ref": "#/backend/entities/Income"
-          },
-          "description": "Stores income information for a specific user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Auth UID of the user."
-            },
-            {
-              "name": "incomeId",
-              "description": "The unique ID of the income record."
             }
           ]
         }
@@ -274,7 +214,6 @@
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure data isolation and efficient querying. User profiles and their associated data (bank accounts, investment accounts, income, and transactions) are stored under the `/users/{userId}` path. This path-based ownership provides clear data isolation and simplifies security rules. Each user's data is directly accessible, eliminating the need for complex queries across collections.\n\nTo achieve Authorization Independence, the `userId` is embedded within each subcollection document (BankAccount, InvestmentAccount, Income, Transaction). This denormalization is CRITICAL. Without it, security rules would need to perform costly and brittle `get()` operations to verify ownership on every read/write, breaking atomic operations (transactions/batches).\n\nThis structure supports required QAPs because listing operations can be securely performed at each subcollection level (e.g. `/users/{userId}/bankAccounts`) without needing to filter based on user identity within the rules. The path-based structure inherently restricts access to data owned by the user identified by the `{userId}`."
+    ]
   }
 }
