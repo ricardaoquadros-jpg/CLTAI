@@ -602,6 +602,12 @@ export default function DashboardPage() {
   const formattedWeeklyEarnings = formatCurrency(weeklyEarnings);
   const formattedRealTimeInvestmentEarnings = formatInvestmentCurrency(realTimeInvestmentEarnings);
 
+  const monthlyBalanceData = [
+    { category: 'Disponível', total: bankBalance },
+    { category: 'Despesas do Mês', total: totalExpensesMonth }
+  ];
+  const totalMonthlyBalance = bankBalance + totalExpensesMonth;
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <Header />
@@ -846,16 +852,24 @@ export default function DashboardPage() {
               onReorderTransactions={handleReorderTransactions}
             />
           </div>
-           {monthlyExpensesByCategory.length > 0 && (
-             <div className="mt-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+              {monthlyExpensesByCategory.length > 0 && (
                 <ExpensesChart 
                     title="Despesas do Mês por Categoria"
                     description="Uma visão detalhada de onde seu dinheiro foi este mês."
                     data={monthlyExpensesByCategory}
                     totalValue={totalExpensesMonth}
                 />
-            </div>
-           )}
+              )}
+               {monthlyExpensesByCategory.length > 0 && (
+                 <ExpensesChart 
+                    title="Balanço Mensal"
+                    description="Comparação entre o saldo disponível e as despesas totais do mês."
+                    data={monthlyBalanceData}
+                    totalValue={totalMonthlyBalance}
+                />
+               )}
+           </div>
            {allExpensesByCategory.length > 0 && (
              <div className="mt-8">
                 <ExpensesChart 
@@ -871,3 +885,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
