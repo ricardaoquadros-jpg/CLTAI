@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { Transaction, ExpenseCategory, TransactionType } from '@/lib/types';
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from "date-fns/locale";
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
-import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -37,15 +37,30 @@ const formSchema = z.object({
 
 interface FinancialHistoryProps {
   transactions: Transaction[];
-  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt' | 'sortIndex'>) => void;
   onUpdateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>>) => void;
   onDeleteTransaction: (id: string) => void;
+  onReorderTransactions: (reorderedTransactions: Transaction[]) => void;
   className?: string;
 }
 
-export function FinancialHistory({ transactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, className }: FinancialHistoryProps) {
+export function FinancialHistory({ transactions: initialTransactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, onReorderTransactions, className }: FinancialHistoryProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [localTransactions, setLocalTransactions] = useState<Transaction[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    // Reverse for descending display order, but keep "Saldo Inicial" logic separate
+    const initialBalance = initialTransactions.find(t => t.description === 'Saldo Inicial');
+    const otherTransactions = initialTransactions
+      .filter(t => t.description !== 'Saldo Inicial')
+      .reverse(); 
+    
+    const sortedForDisplay = initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
+
+    setLocalTransactions(sortedForDisplay);
+  }, [initialTransactions]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,15 +110,62 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
     setIsEditDialogOpen(true);
   };
   
-  const totalTransactions = transactions.reduce((sum, transaction) => {
-    return transaction.type === 'income' ? sum + transaction.amount : sum - transaction.amount;
-  }, 0);
+  const moveTransaction = (index: number, direction: 'up' | 'down') => {
+    const newTransactions = [...localTransactions];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newTransactions.length) return;
+  
+    // Swap elements
+    [newTransactions[index], newTransactions[targetIndex]] = [newTransactions[targetIndex], newTransactions[index]];
+  
+    setLocalTransactions(newTransactions);
+    setIsDirty(true);
+  };
+
+  const handleUpdateOrder = () => {
+    // Reverse the list back to chronological order for saving, excluding "Saldo Inicial"
+    const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
+    const transactionsToSave = localTransactions
+        .filter(t => t.description !== 'Saldo Inicial')
+        .reverse();
+
+    const finalSaveOrder = initialBalance ? [initialBalance, ...transactionsToSave] : transactionsToSave;
+
+    onReorderTransactions(finalSaveOrder);
+    setIsDirty(false);
+};
+
+  const isMoveUpDisabled = (index: number) => {
+    if (index === 0) return true;
+    const currentTx = localTransactions[index];
+    const previousTx = localTransactions[index - 1];
+    return !isSameDay(new Date(currentTx.date), new Date(previousTx.date)) || previousTx.description === 'Saldo Inicial';
+  };
+  
+  const isMoveDownDisabled = (index: number) => {
+    const currentTx = localTransactions[index];
+    if (index === localTransactions.length - 1 || currentTx.description === 'Saldo Inicial') return true;
+    const nextTx = localTransactions[index + 1];
+    return !isSameDay(new Date(currentTx.date), new Date(nextTx.date));
+  };
+  
 
   return (
     <Card className={cn("col-span-1 md:col-span-2 bg-[#1d2630]", className)}>
       <CardHeader>
-        <CardTitle>Histórico Financeiro</CardTitle>
-        <CardDescription>Registre e visualize suas transações financeiras.</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Histórico Financeiro</CardTitle>
+            <CardDescription>Registre e visualize suas transações financeiras.</CardDescription>
+          </div>
+          {isDirty && (
+             <Button onClick={handleUpdateOrder} size="sm">
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Atualizar Saldos
+             </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -237,15 +299,23 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
         </Form>
         <ScrollArea className="h-72 pr-4 pt-10">
           <div className="space-y-4">
-            {transactions.length > 0 ? (
-              transactions.map((transaction) => {
+            {localTransactions.length > 0 ? (
+              localTransactions.map((transaction, index) => {
                 const isInitialBalance = transaction.description === 'Saldo Inicial';
                 return (
                   <div key={transaction.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
                     <div className="flex items-center gap-3">
+                       <div className="flex flex-col items-center">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveTransaction(index, 'up')} disabled={isMoveUpDisabled(index)}>
+                            <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveTransaction(index, 'down')} disabled={isMoveDownDisabled(index)}>
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                        </div>
                       {transaction.type === 'income' ? 
-                          <ArrowUpCircle className="h-5 w-5 text-green-500" /> : 
-                          <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                          <ArrowUpCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : 
+                          <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                       }
                       <div>
                         <p className="font-medium">{transaction.description}</p>
@@ -265,9 +335,9 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
                             {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
                         </p>
                         {!isInitialBalance && (
-                          <p className="text-xs text-muted-foreground">
+                           <p className="text-xs text-muted-foreground">
                               Saldo anterior: {formatCurrency(transaction.balanceBefore)}
-                          </p>
+                           </p>
                         )}
                       </div>
                       {!isInitialBalance && (
@@ -286,7 +356,7 @@ export function FinancialHistory({ transactions, onAddTransaction, onUpdateTrans
               })
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                <p>Nenhuma transação registrada para este mês.</p>
+                <p>Nenhuma transação registrada.</p>
               </div>
             )}
           </div>

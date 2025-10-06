@@ -304,16 +304,25 @@ export default function DashboardPage() {
       if (ts && typeof ts.seconds === 'number' && typeof ts.nanoseconds === 'number') {
         return new Date(ts.seconds * 1000 + ts.nanoseconds / 1000000);
       }
-      // Fallback for string dates, though createdAt should be a timestamp
       return new Date(ts);
     };
   
     return [...transactions].sort((a, b) => {
-      const dateA = toDate(a.createdAt || a.date);
-      const dateB = toDate(b.createdAt || b.date);
-      return dateA.getTime() - dateB.getTime();
+      const dateA = toDate(a.date);
+      const dateB = toDate(b.date);
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      // If dates are the same, sort by sortIndex, then by createdAt
+      if(a.sortIndex !== b.sortIndex) {
+        return a.sortIndex - b.sortIndex;
+      }
+      const createdAtA = toDate(a.createdAt);
+      const createdAtB = toDate(b.createdAt);
+      return createdAtA.getTime() - createdAtB.getTime();
     });
   }, [transactions]);
+  
   
   const sortedTransactionsForDisplay = useMemo(() => {
     const initialBalance = chronologicallySortedTransactions.find(t => t.description === 'Saldo Inicial');
@@ -359,7 +368,8 @@ export default function DashboardPage() {
         category: 'Outros' as const,
         balanceBefore: 0,
         createdAt: serverTimestamp(),
-        userId: user.uid
+        userId: user.uid,
+        sortIndex: 0,
       };
       addDocumentNonBlocking(transactionsRef, initialTransaction);
     }
@@ -371,7 +381,7 @@ export default function DashboardPage() {
     }
   };
   
-  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt'>) => {
+  const handleAddTransaction = (transactionData: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt' | 'sortIndex'>) => {
     if (transactionsRef && financialData && user) {
       const balanceBefore = currentBankBalance;
       
@@ -380,6 +390,7 @@ export default function DashboardPage() {
         userId: user.uid,
         balanceBefore: balanceBefore,
         createdAt: serverTimestamp(),
+        sortIndex: Date.now(),
       };
       addDocumentNonBlocking(transactionsRef, newTransaction);
     }
@@ -403,9 +414,17 @@ export default function DashboardPage() {
     };
 
     tempUpdatedTransactions.sort((a, b) => {
-        const dateA = toDate(a.createdAt);
-        const dateB = toDate(b.createdAt);
+      const dateA = toDate(a.date);
+      const dateB = toDate(b.date);
+      if(dateA.getTime() !== dateB.getTime()) {
         return dateA.getTime() - dateB.getTime();
+      }
+      if(a.sortIndex !== b.sortIndex) {
+        return a.sortIndex - b.sortIndex;
+      }
+      const createdAtA = toDate(a.createdAt);
+      const createdAtB = toDate(b.createdAt);
+      return createdAtA.getTime() - createdAtB.getTime();
     });
 
     let previousBalance = 0;
@@ -431,6 +450,29 @@ export default function DashboardPage() {
     
     await batch.commit();
   }
+
+  const handleReorderTransactions = async (reorderedTransactions: Transaction[]) => {
+    if (!firestore || !user) return;
+  
+    const batch = writeBatch(firestore);
+    
+    let previousBalance = 0;
+    reorderedTransactions.forEach((tx, index) => {
+      const txRef = doc(firestore, 'users', user.uid, 'transactions', tx.id);
+      
+      const updatePayload: any = {
+        sortIndex: index,
+        balanceBefore: previousBalance,
+      };
+      
+      batch.update(txRef, updatePayload);
+      
+      previousBalance = tx.type === 'income' ? previousBalance + tx.amount : previousBalance - tx.amount;
+    });
+  
+    await batch.commit();
+  };
+  
 
   const handleDeleteTransaction = (id: string) => {
     if (!firestore || !user || !transactions) return;
@@ -797,10 +839,11 @@ export default function DashboardPage() {
             </Card>
             
             <FinancialHistory 
-              transactions={sortedTransactionsForDisplay || []} 
+              transactions={chronologicallySortedTransactions}
               onAddTransaction={handleAddTransaction}
               onUpdateTransaction={handleUpdateTransaction}
               onDeleteTransaction={handleDeleteTransaction}
+              onReorderTransactions={handleReorderTransactions}
             />
           </div>
            {monthlyExpensesByCategory.length > 0 && (

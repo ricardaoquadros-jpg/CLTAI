@@ -23,6 +23,7 @@ export interface Transaction {
     seconds: number;
     nanoseconds: number;
   } | Date;
+  sortIndex: number;
 }
 
 export interface Investment {
