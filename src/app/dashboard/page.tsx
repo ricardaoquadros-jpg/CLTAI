@@ -301,18 +301,23 @@ export default function DashboardPage() {
   
   const currentBankBalance = useMemo(() => {
     if (!financialData) return 0;
-    if (!transactions || transactions.length === 0) return 0;
+    if (!transactions || transactions.length === 0) return financialData.bankBalance || 0;
   
-    // Find the latest transaction
-    const latestTransaction = sortedTransactions[0];
+    // Sort transactions by date to ensure chronological order for calculation
+    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Calculate final balance by iterating through all transactions
+    let balance = 0;
+    sorted.forEach(tx => {
+      if (tx.type === 'income') {
+        balance += tx.amount;
+      } else {
+        balance -= tx.amount;
+      }
+    });
   
-    // Calculate the balance after the latest transaction
-    const balanceAfterLastTx = latestTransaction.type === 'income' 
-      ? latestTransaction.balanceBefore + latestTransaction.amount 
-      : latestTransaction.balanceBefore - latestTransaction.amount;
-  
-    return balanceAfterLastTx;
-  }, [financialData, transactions, sortedTransactions]);
+    return balance;
+  }, [financialData, transactions]);
 
 
   const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
@@ -399,7 +404,15 @@ export default function DashboardPage() {
   }
 
   const totalExpensesMonth = useMemo(() => {
-    return transactions ? transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) : 0;
+    if (!transactions) return 0;
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    return transactions
+        .filter(t => {
+            const transactionDate = new Date(t.date);
+            return t.type === 'expense' && transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
 
   if (isUserLoading || isFinancialDataLoading || areTransactionsLoading) {
