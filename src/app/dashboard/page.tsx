@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, collection, deleteField } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import type { FinancialData, Transaction, Investment } from '@/lib/types';
+import type { FinancialData, Transaction, Investment, ExpenseCategory } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { FinancialHistory } from '@/components/dashboard/FinancialHistory';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { parse, getDaysInMonth, startOfYear, differenceInSeconds } from 'date-fns';
+import { MonthlyExpensesChart } from '@/components/dashboard/MonthlyExpensesChart';
 
 
 const SECONDS_IN_HOUR = 3600;
@@ -420,6 +421,33 @@ export default function DashboardPage() {
         })
         .reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
+  
+    const monthlyExpensesByCategory = useMemo(() => {
+        if (!transactions) return [];
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+
+        const expenses = transactions.filter(t => {
+            const transactionDate = new Date(t.date);
+            return t.type === 'expense' &&
+                   transactionDate.getMonth() === currentMonth &&
+                   transactionDate.getFullYear() === currentYear;
+        });
+
+        const categoryMap = expenses.reduce((acc, expense) => {
+            if (!acc[expense.category]) {
+                acc[expense.category] = 0;
+            }
+            acc[expense.category] += expense.amount;
+            return acc;
+        }, {} as Record<ExpenseCategory, number>);
+
+        return Object.entries(categoryMap).map(([category, total]) => ({
+            category: category as ExpenseCategory,
+            total,
+        }));
+    }, [transactions]);
+
 
   if (isUserLoading || isFinancialDataLoading || areTransactionsLoading) {
     return <div className="flex min-h-screen w-full flex-col items-center justify-center"><p>Carregando...</p></div>;
@@ -692,6 +720,11 @@ export default function DashboardPage() {
               onDeleteTransaction={handleDeleteTransaction}
             />
           </div>
+           {monthlyExpensesByCategory.length > 0 && (
+             <div className="mt-8">
+                <MonthlyExpensesChart data={monthlyExpensesByCategory} />
+            </div>
+           )}
         </div>
       </main>
     </div>
