@@ -73,6 +73,7 @@ const weekDaysMap = [
 
 interface SetupFormProps {
   onSetupComplete: (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => void;
+  existingData?: FinancialData | null;
 }
 
 const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omit<Investment, 'id'>) => void }) => {
@@ -257,7 +258,7 @@ const InvestmentForm = ({ onAddInvestment }: { onAddInvestment: (investment: Omi
     )
 }
 
-export function SetupForm({ onSetupComplete }: SetupFormProps) {
+export function SetupForm({ onSetupComplete, existingData }: SetupFormProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -275,6 +276,24 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
       workDays: ["1", "2", "3", "4", "5"].map(Number), // Default to Mon-Fri
     },
   });
+
+  useEffect(() => {
+    if (existingData) {
+      form.reset({
+        salaryAmount: existingData.salary.amount,
+        salaryFrequency: existingData.salary.frequency,
+        bankBalance: existingData.bankBalance,
+        investments: existingData.investments.map(inv => ({...inv, date: new Date(inv.date).toISOString()})),
+        startTime: existingData.startTime,
+        endTime: existingData.endTime,
+        breakStartTime: existingData.breakStartTime || '',
+        breakEndTime: existingData.breakEndTime || '',
+        noBreak: !existingData.breakStartTime,
+        hoursPerDay: existingData.hoursPerDay,
+        workDays: existingData.workDays,
+      });
+    }
+  }, [existingData, form]);
 
   const selectedWeekDays = form.watch('workDays');
   const salaryFrequency = form.watch('salaryFrequency');
@@ -417,9 +436,9 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Configuração Inicial</CardTitle>
+          <CardTitle className="font-headline text-2xl">{existingData ? 'Editar Informações' : 'Configuração Inicial'}</CardTitle>
           <CardDescription>
-            Vamos começar inserindo suas informações financeiras atuais.
+            {existingData ? 'Ajuste suas informações financeiras abaixo.' : 'Vamos começar inserindo suas informações financeiras atuais.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -451,7 +470,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Frequência do Salário</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a frequência do pagamento" />
@@ -698,7 +717,7 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
 
 
               <Button type="submit" size="lg" className="w-full">
-                Ir para o Painel
+                {existingData ? 'Salvar Alterações' : 'Ir para o Painel'}
               </Button>
             </form>
           </Form>
@@ -708,4 +727,5 @@ export function SetupForm({ onSetupComplete }: SetupFormProps) {
   );
 }
 
+    
     

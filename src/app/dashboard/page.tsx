@@ -2,14 +2,14 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, collection, deleteField, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, deleteField, writeBatch, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import type { FinancialData, Transaction, Investment, ExpenseCategory } from '@/lib/types';
 import { formatCurrency, formatRealTimeCurrency, formatInvestmentCurrency } from '@/lib/utils';
 import { SetupForm } from '@/components/dashboard/SetupForm';
 import { FinancialHistory } from '@/components/dashboard/FinancialHistory';
 import Header from '@/components/dashboard/Header';
-import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent, PiggyBank } from 'lucide-react';
+import { Banknote, Landmark, LineChart, TrendingUp, Wallet, Briefcase, CalendarClock, Eye, EyeOff, Calendar, Hourglass, DollarSign, CalendarRange, Percent, PiggyBank, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -96,6 +96,7 @@ export default function DashboardPage() {
   const [workdayProgress, setWorkdayProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -352,26 +353,42 @@ export default function DashboardPage() {
 
   const handleSetupComplete = (data: Omit<FinancialData, 'uid' | 'email' | 'displayName'>) => {
     if (financialDataRef && user && transactionsRef) {
-      const initialProfile = {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        ...data
+      
+      const updatedProfileData = {
+          ...data,
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
       };
-      setDocumentNonBlocking(financialDataRef, initialProfile, { merge: true });
 
-      const initialTransaction = {
-        description: 'Saldo Inicial',
-        amount: data.bankBalance,
-        date: new Date().toISOString(),
-        type: 'income' as const,
-        category: 'Outros' as const,
-        balanceBefore: 0,
-        createdAt: serverTimestamp(),
-        userId: user.uid,
-        sortIndex: 0,
-      };
-      addDocumentNonBlocking(transactionsRef, initialTransaction);
+      if (isEditing) {
+        // If editing, just update the main doc
+        updateDocumentNonBlocking(financialDataRef, updatedProfileData);
+        
+        // And check if the initial balance transaction needs an update
+        const initialBalanceTx = transactions?.find(t => t.description === 'Saldo Inicial');
+        if (initialBalanceTx && initialBalanceTx.amount !== data.bankBalance) {
+          const txRef = doc(firestore, 'users', user.uid, 'transactions', initialBalanceTx.id);
+          updateDoc(txRef, { amount: data.bankBalance });
+        }
+        setIsEditing(false); // Close the edit form
+      } else {
+        // If initial setup, create main doc and initial transaction
+        setDocumentNonBlocking(financialDataRef, updatedProfileData, { merge: true });
+
+        const initialTransaction = {
+          description: 'Saldo Inicial',
+          amount: data.bankBalance,
+          date: new Date().toISOString(),
+          type: 'income' as const,
+          category: 'Outros' as const,
+          balanceBefore: 0,
+          createdAt: serverTimestamp(),
+          userId: user.uid,
+          sortIndex: 0,
+        };
+        addDocumentNonBlocking(transactionsRef, initialTransaction);
+      }
     }
 
     setRealTimeEarnings(0);
@@ -578,8 +595,8 @@ export default function DashboardPage() {
     return <div className="flex min-h-screen w-full flex-col items-center justify-center"><p>Carregando...</p></div>;
   }
 
-  if (!financialData || !financialData.salary) {
-    return <SetupForm onSetupComplete={handleSetupComplete} />;
+  if (!financialData || !financialData.salary || isEditing) {
+    return <SetupForm onSetupComplete={handleSetupComplete} existingData={isEditing ? financialData : undefined} />;
   }
 
   const isWorking = isDuringWorkHours(financialData.workDays, financialData.startTime, financialData.endTime, financialData.breakStartTime, financialData.breakEndTime);
@@ -623,6 +640,10 @@ export default function DashboardPage() {
               <Button onClick={() => setIsPrivacyMode(!isPrivacyMode)} variant="ghost" size="icon">
                   {isPrivacyMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   <span className="sr-only">Alternar modo de privacidade</span>
+              </Button>
+              <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
               </Button>
               <Button onClick={handleReset} variant="outline" size="sm">Resetar</Button>
             </div>
@@ -886,4 +907,5 @@ export default function DashboardPage() {
   );
 }
 
+    
     
