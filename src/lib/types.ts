@@ -8,7 +8,7 @@ export interface Salary {
 }
 
 export type TransactionType = 'income' | 'expense';
-export type ExpenseCategory = 'Lazer' | 'Mercado' | 'Investimento' | 'Transporte' | 'Saúde' | 'Educação' | 'Moradia' | 'Jogos' | 'Esportes' | 'Roupas' | 'Outros';
+export type ExpenseCategory = 'Alimentação' | 'Lazer' | 'Mercado' | 'Investimento' | 'Transporte' | 'Saúde' | 'Educação' | 'Moradia' | 'Jogos' | 'Esportes' | 'Roupas' | 'Outros';
 
 export interface Transaction {
   id: string;

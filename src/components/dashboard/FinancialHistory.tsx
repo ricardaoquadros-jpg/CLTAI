@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 
-const expenseCategories: ExpenseCategory[] = ['Lazer', 'Mercado', 'Investimento', 'Transporte', 'Saúde', 'Educação', 'Moradia', 'Jogos', 'Esportes', 'Roupas', 'Outros'];
+const expenseCategories: ExpenseCategory[] = ['Alimentação', 'Lazer', 'Mercado', 'Investimento', 'Transporte', 'Saúde', 'Educação', 'Moradia', 'Jogos', 'Esportes', 'Roupas', 'Outros'];
 const transactionTypes: {label: string, value: TransactionType}[] = [{label: 'Entrada', value: 'income'}, {label: 'Saída', value: 'expense'}];
 
 const formSchema = z.object({
