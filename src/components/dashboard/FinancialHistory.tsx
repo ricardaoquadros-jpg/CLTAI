@@ -91,15 +91,14 @@ const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabl
                </p>
             )}
           </div>
+          
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+          </Button>
           {!isInitialBalance && (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
         </div>
       </div>
@@ -510,7 +509,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
                   <FormItem>
                     <FormLabel>Descrição</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={field.value === 'Saldo Inicial'}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -593,3 +592,5 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     </Card>
   );
 }
+
+    
