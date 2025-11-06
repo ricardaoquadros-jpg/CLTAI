@@ -22,6 +22,8 @@ import { Calendar } from '../ui/calendar';
 import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from '../ui/separator';
 
 
 const expenseCategories: ExpenseCategory[] = ['Alimentação', 'Lazer', 'Mercado', 'Investimento', 'Transporte', 'Saúde', 'Educação', 'Moradia', 'Jogos', 'Esportes', 'Roupas', 'Outros'];
@@ -44,11 +46,74 @@ interface FinancialHistoryProps {
   className?: string;
 }
 
+const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabled, isMoveDownDisabled }: {
+    transaction: Transaction;
+    onMove: (direction: 'up' | 'down') => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    isMoveUpDisabled: boolean;
+    isMoveDownDisabled: boolean;
+}) => {
+    const isInitialBalance = transaction.description === 'Saldo Inicial';
+    return (
+        <div className="flex items-center justify-between rounded-md bg-secondary p-3">
+        <div className="flex items-center gap-3">
+           <div className="flex flex-col items-center">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('up')} disabled={isMoveUpDisabled}>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('down')} disabled={isMoveDownDisabled}>
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </div>
+          {transaction.type === 'income' ? 
+              <ArrowUpCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : 
+              <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+          }
+          <div>
+            <p className="font-medium">{transaction.description}</p>
+            {!isInitialBalance && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(transaction.date), "dd/MM/yyyy")}
+                </p>
+                <Badge variant="outline" className="mt-1">{transaction.category}</Badge>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-right">
+          <div>
+            <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
+            </p>
+            {!isInitialBalance && (
+               <p className="text-xs text-muted-foreground">
+                  Saldo anterior: {formatCurrency(transaction.balanceBefore)}
+               </p>
+            )}
+          </div>
+          {!isInitialBalance && (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+};
+
 export function FinancialHistory({ transactions: initialTransactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, onReorderTransactions, className }: FinancialHistoryProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [localTransactions, setLocalTransactions] = useState<Transaction[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+  const [activeMonth, setActiveMonth] = useState('all');
 
   useEffect(() => {
     // Reverse for descending display order, but keep "Saldo Inicial" logic separate
@@ -60,7 +125,27 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     const sortedForDisplay = initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
 
     setLocalTransactions(sortedForDisplay);
+    setIsDirty(false); // Reset dirty state when initial transactions change
   }, [initialTransactions]);
+
+  const monthlyGroupedTransactions = useMemo(() => {
+    const groups: { [key: string]: Transaction[] } = {};
+    const sorted = [...localTransactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    sorted.forEach(tx => {
+      if (tx.description === 'Saldo Inicial') return;
+      const monthYear = format(new Date(tx.date), 'yyyy-MM');
+      if (!groups[monthYear]) {
+        groups[monthYear] = [];
+      }
+      groups[monthYear].push(tx);
+    });
+    return groups;
+  }, [localTransactions]);
+
+  const monthTabs = useMemo(() => {
+    return Object.keys(monthlyGroupedTransactions).sort().reverse();
+  }, [monthlyGroupedTransactions]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -111,20 +196,36 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
   };
   
   const moveTransaction = (index: number, direction: 'up' | 'down') => {
-    const newTransactions = [...localTransactions];
+    const activeList = activeMonth === 'all' ? localTransactions : monthlyGroupedTransactions[activeMonth];
+    if (!activeList) return;
+
+    const newOrderedList = [...activeList];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     
-    if (targetIndex < 0 || targetIndex >= newTransactions.length) return;
+    if (targetIndex < 0 || targetIndex >= newOrderedList.length) return;
   
-    // Swap elements
-    [newTransactions[index], newTransactions[targetIndex]] = [newTransactions[targetIndex], newTransactions[index]];
-  
-    setLocalTransactions(newTransactions);
+    [newOrderedList[index], newOrderedList[targetIndex]] = [newOrderedList[targetIndex], newOrderedList[index]];
+    
+    // Update the correct list based on the active tab
+    if (activeMonth === 'all') {
+      setLocalTransactions(newOrderedList);
+    } else {
+        const globalReordered = [...localTransactions];
+        let sublistIndex = 0;
+        for (let i = 0; i < globalReordered.length; i++) {
+            const tx = globalReordered[i];
+            const monthYear = format(new Date(tx.date), 'yyyy-MM');
+            if (monthYear === activeMonth) {
+                globalReordered[i] = newOrderedList[sublistIndex++];
+            }
+        }
+        setLocalTransactions(globalReordered);
+    }
+
     setIsDirty(true);
   };
 
   const handleUpdateOrder = () => {
-    // Reverse the list back to chronological order for saving, excluding "Saldo Inicial"
     const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
     const transactionsToSave = localTransactions
         .filter(t => t.description !== 'Saldo Inicial')
@@ -136,20 +237,78 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     setIsDirty(false);
 };
 
-  const isMoveUpDisabled = (index: number) => {
+  const isMoveUpDisabled = (list: Transaction[], index: number) => {
     if (index === 0) return true;
-    const currentTx = localTransactions[index];
-    const previousTx = localTransactions[index - 1];
+    const currentTx = list[index];
+    const previousTx = list[index - 1];
     return !isSameDay(new Date(currentTx.date), new Date(previousTx.date)) || previousTx.description === 'Saldo Inicial';
   };
   
-  const isMoveDownDisabled = (index: number) => {
-    const currentTx = localTransactions[index];
-    if (index === localTransactions.length - 1 || currentTx.description === 'Saldo Inicial') return true;
-    const nextTx = localTransactions[index + 1];
+  const isMoveDownDisabled = (list: Transaction[], index: number) => {
+    const currentTx = list[index];
+    if (index === list.length - 1 || currentTx.description === 'Saldo Inicial') return true;
+    const nextTx = list[index + 1];
     return !isSameDay(new Date(currentTx.date), new Date(nextTx.date));
   };
   
+  const renderTransactionList = (transactions: Transaction[], isFullList: boolean) => {
+    const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
+    let displayList = transactions;
+    if(isFullList && initialBalance && !transactions.find(t => t.id === initialBalance.id)) {
+        displayList = [...transactions, initialBalance];
+    }
+    
+    let totalIncome = 0;
+    let totalExpense = 0;
+    transactions.forEach(tx => {
+        if(tx.type === 'income') totalIncome += tx.amount;
+        if(tx.type === 'expense') totalExpense += tx.amount;
+    });
+
+    return (
+      <ScrollArea className="h-96 pr-4 pt-2">
+          <div className="space-y-4">
+              {displayList.length > 0 ? (
+                  displayList.map((transaction, index) => (
+                      <TransactionItem
+                          key={transaction.id}
+                          transaction={transaction}
+                          onMove={(direction) => moveTransaction(index, direction)}
+                          onEdit={() => handleEditClick(transaction)}
+                          onDelete={() => onDeleteTransaction(transaction.id)}
+                          isMoveUpDisabled={isMoveUpDisabled(displayList, index)}
+                          isMoveDownDisabled={isMoveDownDisabled(displayList, index)}
+                      />
+                  ))
+              ) : (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <p>Nenhuma transação neste mês.</p>
+                  </div>
+              )}
+          </div>
+          {!isFullList && transactions.length > 0 && (
+             <div className="mt-4 pt-4 border-t">
+                <h4 className="font-bold text-lg mb-2">Resumo do Mês</h4>
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-green-500">Total de Entradas:</span>
+                        <span className="font-semibold">{formatCurrency(totalIncome)}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-red-500">Total de Saídas:</span>
+                        <span className="font-semibold">{formatCurrency(totalExpense)}</span>
+                    </div>
+                    <Separator/>
+                     <div className="flex justify-between font-bold text-base">
+                        <span>Líquido:</span>
+                        <span>{formatCurrency(totalIncome - totalExpense)}</span>
+                    </div>
+                </div>
+            </div>
+          )}
+      </ScrollArea>
+    );
+  };
 
   return (
     <Card className={cn("col-span-1 md:col-span-2 bg-[#1d2630]", className)}>
@@ -166,199 +325,158 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
         </div>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onAddSubmit)} className="mb-6 space-y-4">
-                <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                        <FormItem className="flex justify-center">
-                            <FormControl>
-                                <ToggleGroup
-                                    type="single"
-                                    variant="outline"
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    className="gap-0"
-                                >
-                                    <ToggleGroupItem value="expense" aria-label="Toggle expense" className="rounded-r-none">
-                                        <ArrowDownCircle className="mr-2 h-4 w-4 text-red-500" />
-                                        Saída
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem value="income" aria-label="Toggle income" className="rounded-l-none">
-                                        <ArrowUpCircle className="mr-2 h-4 w-4 text-green-500" />
-                                        Entrada
-                                    </ToggleGroupItem>
-                                </ToggleGroup>
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mb-8">
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onAddSubmit)} className="space-y-4">
                     <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Descrição</FormLabel>
-                          <FormControl>
-                              <Input placeholder="ex: Salário, Aluguel" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor</FormLabel>
-                          <div className="relative">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                              R$
-                            </span>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Valor"
-                                className="pl-10"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  field.onChange(value === '' ? undefined : Number(value));
-                                }}
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                </div>
-                 <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
-                     <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                           <FormLabel>Categoria</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma categoria" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {expenseCategories.map(category => (
-                                <SelectItem key={category} value={category}>{category}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
                         control={form.control}
-                        name="date"
+                        name="type"
                         render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data da Operação</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button variant="outline" className="pl-3 text-left font-normal">
-                                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-                                                <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
+                            <FormItem className="flex justify-center">
+                                <FormControl>
+                                    <ToggleGroup
+                                        type="single"
+                                        variant="outline"
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        className="gap-0"
+                                    >
+                                        <ToggleGroupItem value="expense" aria-label="Toggle expense" className="rounded-r-none">
+                                            <ArrowDownCircle className="mr-2 h-4 w-4 text-red-500" />
+                                            Saída
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem value="income" aria-label="Toggle income" className="rounded-l-none">
+                                            <ArrowUpCircle className="mr-2 h-4 w-4 text-green-500" />
+                                            Entrada
+                                        </ToggleGroupItem>
+                                    </ToggleGroup>
+                                </FormControl>
                             </FormItem>
                         )}
                     />
-                </div>
-                <Button type="submit" className="w-full sm:w-auto float-right">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
-                </Button>
-            </form>
-        </Form>
-        <ScrollArea className="h-96 pr-4 pt-10">
-          <div className="space-y-4">
-            {localTransactions.length > 0 ? (
-              localTransactions.map((transaction, index) => {
-                const isInitialBalance = transaction.description === 'Saldo Inicial';
-                return (
-                  <div key={transaction.id} className="flex items-center justify-between rounded-md bg-secondary p-3">
-                    <div className="flex items-center gap-3">
-                       <div className="flex flex-col items-center">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveTransaction(index, 'up')} disabled={isMoveUpDisabled(index)}>
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveTransaction(index, 'down')} disabled={isMoveDownDisabled(index)}>
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      {transaction.type === 'income' ? 
-                          <ArrowUpCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : 
-                          <ArrowDownCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                      }
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        {!isInitialBalance && (
-                          <>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(transaction.date), "dd/MM/yyyy")}
-                            </p>
-                            <Badge variant="outline" className="mt-1">{transaction.category}</Badge>
-                          </>
+                    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+                        <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Descrição</FormLabel>
+                            <FormControl>
+                                <Input placeholder="ex: Salário, Aluguel" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
                         )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-right">
-                      <div>
-                        <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                            {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
-                        </p>
-                        {!isInitialBalance && (
-                           <p className="text-xs text-muted-foreground">
-                              Saldo anterior: {formatCurrency(transaction.balanceBefore)}
-                           </p>
+                        />
+                        <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Valor</FormLabel>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                R$
+                                </span>
+                                <FormControl>
+                                <Input
+                                    type="number"
+                                    placeholder="Valor"
+                                    className="pl-10"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                    onChange={(e) => {
+                                    const value = e.target.value;
+                                    field.onChange(value === '' ? undefined : Number(value));
+                                    }}
+                                />
+                                </FormControl>
+                            </div>
+                            <FormMessage />
+                            </FormItem>
                         )}
-                      </div>
-                      {!isInitialBalance && (
-                        <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEditClick(transaction)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTransaction(transaction.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
+                        />
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <p>Nenhuma transação registrada.</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+                    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+                        <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Categoria</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione uma categoria" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {expenseCategories.map(category => (
+                                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="date"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Data da Operação</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant="outline" className="pl-3 text-left font-normal">
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                                                    <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <Button type="submit" className="w-full sm:w-auto float-right">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
+                    </Button>
+                </form>
+            </Form>
+        </div>
+
+        <Tabs defaultValue="all" orientation="vertical" className="w-full grid grid-cols-5 gap-4 pt-10" onValueChange={setActiveMonth}>
+            <TabsList className="flex-col h-auto justify-start col-span-1">
+                 <TabsTrigger value="all" className="w-full justify-start">Todos</TabsTrigger>
+                 {monthTabs.map(month => (
+                    <TabsTrigger key={month} value={month} className="w-full justify-start">
+                        {format(new Date(`${month}-02`), 'MMMM yyyy', { locale: ptBR })}
+                    </TabsTrigger>
+                 ))}
+            </TabsList>
+            <div className="col-span-4">
+                <TabsContent value="all">
+                    {renderTransactionList(localTransactions, true)}
+                </TabsContent>
+                {monthTabs.map(month => (
+                    <TabsContent key={month} value={month}>
+                        {renderTransactionList(monthlyGroupedTransactions[month] || [], false)}
+                    </TabsContent>
+                ))}
+            </div>
+        </Tabs>
       </CardContent>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
