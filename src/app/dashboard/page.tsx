@@ -468,8 +468,8 @@ export default function DashboardPage() {
     await batch.commit();
   }
 
-  const handleReorderTransactions = async (reorderedTransactions: Transaction[]) => {
-    if (!firestore || !user) return;
+  const handleReorderTransactions = async (reorderedTransactions: Transaction[]): Promise<boolean> => {
+    if (!firestore || !user) return false;
   
     const batch = writeBatch(firestore);
     
@@ -488,6 +488,7 @@ export default function DashboardPage() {
     });
   
     await batch.commit();
+    return true;
   };
   
 

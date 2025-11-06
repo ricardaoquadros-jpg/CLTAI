@@ -42,7 +42,7 @@ interface FinancialHistoryProps {
   onAddTransaction: (transaction: Omit<Transaction, 'id' | 'balanceBefore' | 'userId' | 'createdAt' | 'sortIndex'>) => void;
   onUpdateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id' | 'balanceBefore' | 'userId'>>) => void;
   onDeleteTransaction: (id: string) => void;
-  onReorderTransactions: (reorderedTransactions: Transaction[]) => void;
+  onReorderTransactions: (reorderedTransactions: Transaction[]) => Promise<boolean>;
   className?: string;
 }
 
@@ -222,7 +222,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     setIsDirty(true);
   };
 
-  const handleUpdateOrder = () => {
+  const handleUpdateOrder = async () => {
     const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
     const transactionsToSave = localTransactions
         .filter(t => t.description !== 'Saldo Inicial')
@@ -230,8 +230,12 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
 
     const finalSaveOrder = initialBalance ? [initialBalance, ...transactionsToSave] : transactionsToSave;
 
-    onReorderTransactions(finalSaveOrder);
-    setIsDirty(false);
+    const success = await onReorderTransactions(finalSaveOrder);
+    if(success) {
+      // Force a re-render by creating a new array reference
+      setLocalTransactions([...localTransactions]); 
+      setIsDirty(false);
+    }
 };
 
   const isMoveUpDisabled = (list: Transaction[], index: number) => {
