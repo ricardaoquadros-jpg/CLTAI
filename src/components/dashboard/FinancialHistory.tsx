@@ -72,13 +72,11 @@ const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabl
           }
           <div>
             <p className="font-medium">{transaction.description}</p>
+            <p className="text-xs text-muted-foreground">
+              {format(new Date(transaction.date), "dd/MM/yyyy")}
+            </p>
             {!isInitialBalance && (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {format(new Date(transaction.date), "dd/MM/yyyy")}
-                </p>
                 <Badge variant="outline" className="mt-1">{transaction.category}</Badge>
-              </>
             )}
           </div>
         </div>
