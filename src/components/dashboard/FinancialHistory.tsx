@@ -30,7 +30,7 @@ const expenseCategories: ExpenseCategory[] = ['Alimentação', 'Lazer', 'Mercado
 const transactionTypes: {label: string, value: TransactionType}[] = [{label: 'Entrada', value: 'income'}, {label: 'Saída', value: 'expense'}];
 
 const formSchema = z.object({
-  description: z.string().min(2, { message: 'A descrição deve ter pelo menos 2 caracteres.' }),
+  description: z.string(),
   amount: z.coerce.number().positive({ message: 'Por favor, insira um valor positivo.' }),
   category: z.enum(expenseCategories, { required_error: 'Por favor, selecione uma categoria.' }),
   date: z.date({ required_error: "A data é obrigatória." }),
