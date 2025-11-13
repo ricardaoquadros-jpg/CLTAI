@@ -130,7 +130,6 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     const sorted = [...localTransactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     sorted.forEach(tx => {
-      if (tx.description === 'Saldo Inicial') return;
       const monthYear = format(new Date(tx.date), 'yyyy-MM');
       if (!groups[monthYear]) {
         groups[monthYear] = [];
@@ -596,5 +595,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     </Card>
   );
 }
+
+    
 
     
