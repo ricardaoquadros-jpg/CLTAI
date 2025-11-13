@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
-import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, RefreshCcw } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, RefreshCcw, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -92,12 +92,12 @@ const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabl
             )}
           </div>
           
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit} disabled={isInitialBalance && transaction.description === 'Saldo Inicial'}>
             <Pencil className="h-4 w-4" />
           </Button>
           {!isInitialBalance && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
+              <Undo2 className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -121,15 +121,14 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     
     const sortedForDisplay = initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
 
-    setLocalTransactions(sortedForDisplay);
+    setLocalTransactions(initialTransactions.sort((a,b) => new Date(b.date).getTime() - a.sortIndex - b.sortIndex));
     setIsDirty(false); // Reset dirty state when initial transactions change
   }, [initialTransactions]);
 
   const monthlyGroupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
-    const sorted = [...localTransactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    sorted.forEach(tx => {
+    localTransactions.forEach(tx => {
       const monthYear = format(new Date(tx.date), 'yyyy-MM');
       if (!groups[monthYear]) {
         groups[monthYear] = [];
@@ -252,12 +251,6 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
   };
   
   const renderTransactionList = (transactions: Transaction[], isFullList: boolean) => {
-    const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
-    let displayList = transactions;
-    if(isFullList && initialBalance && !transactions.find(t => t.id === initialBalance.id)) {
-        displayList = [...transactions, initialBalance];
-    }
-    
     let totalIncome = 0;
     let totalExpense = 0;
     transactions.forEach(tx => {
@@ -268,16 +261,16 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     return (
       <ScrollArea className="h-96 pr-4 pt-2">
           <div className="space-y-4">
-              {displayList.length > 0 ? (
-                  displayList.map((transaction, index) => (
+              {transactions.length > 0 ? (
+                  transactions.map((transaction, index) => (
                       <TransactionItem
                           key={transaction.id}
                           transaction={transaction}
                           onMove={(direction) => moveTransaction(index, direction)}
                           onEdit={() => handleEditClick(transaction)}
                           onDelete={() => onDeleteTransaction(transaction.id)}
-                          isMoveUpDisabled={isMoveUpDisabled(displayList, index)}
-                          isMoveDownDisabled={isMoveDownDisabled(displayList, index)}
+                          isMoveUpDisabled={isMoveUpDisabled(transactions, index)}
+                          isMoveDownDisabled={isMoveDownDisabled(transactions, index)}
                       />
                   ))
               ) : (
@@ -512,7 +505,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
                   <FormItem>
                     <FormLabel>Descrição</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={field.value === 'Saldo Inicial'}/>
+                      <Input {...field} disabled={editingTransaction?.description === 'Saldo Inicial'}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -537,7 +530,7 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={editingTransaction?.description === 'Saldo Inicial'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
