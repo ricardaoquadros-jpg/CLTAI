@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { formatCurrency } from '@/lib/utils';
-import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, RefreshCcw, Undo2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowDownCircle, ArrowUpCircle, ArrowDown, ArrowUp, RefreshCcw, Undo2, Redo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -92,12 +92,12 @@ const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabl
             )}
           </div>
           
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit} disabled={isInitialBalance && transaction.description === 'Saldo Inicial'}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onEdit}>
             <Pencil className="h-4 w-4" />
           </Button>
           {!isInitialBalance && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Undo2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -108,22 +108,57 @@ const TransactionItem = ({ transaction, onMove, onEdit, onDelete, isMoveUpDisabl
 export function FinancialHistory({ transactions: initialTransactions, onAddTransaction, onUpdateTransaction, onDeleteTransaction, onReorderTransactions, className }: FinancialHistoryProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [localTransactions, setLocalTransactions] = useState<Transaction[]>([]);
+  
+  const [history, setHistory] = useState<Transaction[][]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
   const [isDirty, setIsDirty] = useState(false);
+
   const [activeMonth, setActiveMonth] = useState('all');
 
-  useEffect(() => {
-    // Reverse for descending display order, but keep "Saldo Inicial" logic separate
-    const initialBalance = initialTransactions.find(t => t.description === 'Saldo Inicial');
-    const otherTransactions = initialTransactions
-      .filter(t => t.description !== 'Saldo Inicial')
-      .reverse(); 
-    
-    const sortedForDisplay = initialBalance ? [...otherTransactions, initialBalance] : otherTransactions;
+  const localTransactions = useMemo(() => {
+    if (currentHistoryIndex === -1 || history.length === 0) {
+      return [];
+    }
+    return history[currentHistoryIndex];
+  }, [history, currentHistoryIndex]);
 
-    setLocalTransactions(initialTransactions.sort((a,b) => new Date(b.date).getTime() - a.sortIndex - b.sortIndex));
-    setIsDirty(false); // Reset dirty state when initial transactions change
+
+  useEffect(() => {
+    const sortedForDisplay = [...initialTransactions].sort((a,b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) return dateB - dateA;
+        return b.sortIndex - a.sortIndex;
+    });
+
+    setHistory([sortedForDisplay]);
+    setCurrentHistoryIndex(0);
+    setIsDirty(false); 
   }, [initialTransactions]);
+
+  const updateHistory = (newTransactions: Transaction[]) => {
+    const newHistory = history.slice(0, currentHistoryIndex + 1);
+    newHistory.push(newTransactions);
+    setHistory(newHistory);
+    setCurrentHistoryIndex(newHistory.length - 1);
+  };
+  
+  const canUndo = currentHistoryIndex > 0;
+  const canRedo = currentHistoryIndex < history.length - 1;
+
+  const handleUndo = () => {
+    if (canUndo) {
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+      setIsDirty(true);
+    }
+  };
+
+  const handleRedo = () => {
+    if (canRedo) {
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+      setIsDirty(true);
+    }
+  };
 
   const monthlyGroupedTransactions = useMemo(() => {
     const groups: { [key: string]: Transaction[] } = {};
@@ -139,8 +174,12 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
   }, [localTransactions]);
 
   const monthTabs = useMemo(() => {
-    return Object.keys(monthlyGroupedTransactions).sort().reverse();
-  }, [monthlyGroupedTransactions]);
+    const allMonths = new Set<string>();
+    initialTransactions.forEach(tx => {
+        allMonths.add(format(new Date(tx.date), 'yyyy-MM'));
+    });
+    return Array.from(allMonths).sort().reverse();
+  }, [initialTransactions]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -201,9 +240,9 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
   
     [newOrderedList[index], newOrderedList[targetIndex]] = [newOrderedList[targetIndex], newOrderedList[index]];
     
-    // Update the correct list based on the active tab
+    let finalTransactions: Transaction[];
     if (activeMonth === 'all') {
-      setLocalTransactions(newOrderedList);
+      finalTransactions = newOrderedList;
     } else {
         const globalReordered = [...localTransactions];
         let sublistIndex = 0;
@@ -214,24 +253,22 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
                 globalReordered[i] = newOrderedList[sublistIndex++];
             }
         }
-        setLocalTransactions(globalReordered);
+        finalTransactions = globalReordered;
     }
-
+    updateHistory(finalTransactions);
     setIsDirty(true);
   };
 
   const handleUpdateOrder = async () => {
-    const initialBalance = localTransactions.find(t => t.description === 'Saldo Inicial');
-    const transactionsToSave = localTransactions
-        .filter(t => t.description !== 'Saldo Inicial')
-        .reverse();
+    const chronologicalOrder = [...localTransactions].reverse();
 
-    const finalSaveOrder = initialBalance ? [initialBalance, ...transactionsToSave] : transactionsToSave;
-
-    const success = await onReorderTransactions(finalSaveOrder);
+    const success = await onReorderTransactions(chronologicalOrder);
     if(success) {
-      // Force a re-render by creating a new array reference
-      setLocalTransactions([...localTransactions]); 
+      setHistory(prev => {
+        const newHistory = [...prev];
+        newHistory[currentHistoryIndex] = localTransactions;
+        return newHistory;
+      });
       setIsDirty(false);
     }
 };
@@ -311,10 +348,20 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
             <CardTitle>Histórico Financeiro</CardTitle>
             <CardDescription>Registre e visualize suas transações financeiras.</CardDescription>
           </div>
-           <Button onClick={handleUpdateOrder} size="sm">
+          <div className='flex items-center gap-2'>
+            <Button onClick={handleUndo} variant="outline" size="icon" disabled={!canUndo}>
+                <Undo2 className="h-4 w-4" />
+                <span className="sr-only">Desfazer</span>
+            </Button>
+            <Button onClick={handleRedo} variant="outline" size="icon" disabled={!canRedo}>
+                <Redo2 className="h-4 w-4" />
+                <span className="sr-only">Refazer</span>
+            </Button>
+           <Button onClick={handleUpdateOrder} size="sm" disabled={!isDirty}>
               <RefreshCcw className="mr-2 h-4 w-4" />
               Atualizar Saldos
            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -588,6 +635,8 @@ export function FinancialHistory({ transactions: initialTransactions, onAddTrans
     </Card>
   );
 }
+
+    
 
     
 
