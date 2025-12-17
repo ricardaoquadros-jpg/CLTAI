@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  financialData FinancialData?
+  transactions  Transaction[]
+  investments   Investment[]
+}
+
+model FinancialData {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  salaryAmount          Float
+  salaryFrequency       String   // 'monthly', 'monthly_work_hours', 'hourly', 'daily', 'monthly_business_days'
+  bankBalance           Float    @default(0)
+  startTime             String   // e.g., "09:00"
+  endTime               String   // e.g., "18:00"
+  breakStartTime        String?  // e.g., "12:00"
+  breakEndTime          String?  // e.g., "13:00"
+  hoursPerDay           Float
+  workDays              Json     // Array of numbers 0-6
+  totalWorkHoursInMonth Float
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  description   String
+  amount        Float
+  date          DateTime
+  type          String   // 'income' | 'expense'
+  category      String   // 'Alimentação', 'Lazer', etc.
+  balanceBefore Float
+  sortIndex     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+}
+
+model Investment {
+  id                      String   @id @default(cuid())
+  userId                  String
+  description             String
+  amount                  Float
+  date                    DateTime
+  annualYield             Float
+  yieldOnBusinessDaysOnly Boolean  @default(false)
+  createdAt               DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
