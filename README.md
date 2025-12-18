@@ -1,207 +1,224 @@
-# CLT AI - Personal Finance Dashboard
+# 💼 CLT AI — Dashboard de Finanças Pessoais
 
-<div align="center">
-  <h3>🚀 Aplicação web full stack para finanças pessoais com autenticação OAuth, persistência de dados por usuário e frontend moderno em React/Next.js</h3>
-  
-  ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
-  ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-  ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
-  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-336791?style=flat-square&logo=postgresql)
-  ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)
-</div>
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript">
+  <img src="https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql">
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma">
+  <img src="https://img.shields.io/badge/TailwindCSS-06B6D4?style=for-the-badge&logo=tailwindcss">
+</p>
 
 ---
 
-## 📌 Descrição
+## 📖 Sobre o Projeto
 
-**CLT AI** é uma aplicação web de finanças pessoais desenvolvida para trabalhadores CLT que desejam acompanhar seus ganhos em tempo real. A aplicação calcula quanto você está ganhando a cada segundo do seu dia de trabalho, baseado no seu salário e horário de expediente.
+**CLT AI** é uma aplicação web **full stack** de finanças pessoais, desenvolvida para trabalhadores **CLT**, com foco em **visualização de ganhos em tempo real**, organização financeira e persistência de dados por usuário.
 
-### Por que esse projeto?
+O sistema calcula automaticamente quanto o usuário está ganhando **por segundo**, com base em salário e jornada de trabalho, além de permitir o controle de **despesas**, **investimentos** e **patrimônio** em um dashboard moderno e seguro.
 
-Este projeto foi desenvolvido como demonstração de:
-- Autenticação OAuth 2.0 com Google
-- Backend API REST com Next.js
-- Persistência de dados com PostgreSQL
-- Arquitetura full stack limpa e escalável
+---
+
+## 🎯 Objetivo
+
+- Demonstrar uma arquitetura **full stack moderna**  
+- Implementar autenticação segura via **OAuth 2.0 (Google)**  
+- Persistir dados financeiros por usuário  
+- Aplicar boas práticas com **Next.js, React e Prisma**  
+- Criar uma base escalável para aplicações financeiras  
 
 ---
 
 ## ✨ Funcionalidades
 
-- **🔐 Login com Google** - Autenticação segura via OAuth 2.0
-- **💰 Simulação em Tempo Real** - Veja seus ganhos crescendo a cada segundo
-- **📊 Dashboard Completo** - Visualize salário diário, semanal, mensal e patrimônio
-- **💸 Registro de Despesas** - Categorize e acompanhe gastos
-- **📈 Investimentos** - Registre investimentos com rendimento anual
-- **👤 Persistência por Usuário** - Cada usuário tem seus próprios dados
-- **🔒 Modo Privacidade** - Esconda valores sensíveis com um clique
+### 🔐 Autenticação
+- Login com **Google OAuth 2.0**
+- Sessões gerenciadas com **NextAuth.js**
+- Isolamento total de dados por usuário
+
+### 💰 Simulação Financeira
+- Cálculo de ganhos **em tempo real (por segundo)**
+- Salário diário, semanal e mensal
+- Atualização instantânea no frontend
+
+### 📊 Dashboard
+- Visão geral do patrimônio
+- Valores consolidados de ganhos e gastos
+- Interface moderna e responsiva
+
+### 💸 Despesas
+- Registro e categorização de gastos
+- Histórico financeiro por usuário
+
+### 📈 Investimentos
+- Cadastro de investimentos
+- Cálculo de rendimento anual
+- Consolidação no patrimônio total
+
+### 🔒 Privacidade
+- Modo de ocultação de valores sensíveis
+- Controle total pelo usuário
 
 ---
 
-## 🛠️ Tecnologias
+## 🛠️ Tecnologias Utilizadas
 
-| Categoria | Tecnologia |
-|-----------|------------|
-| **Frontend** | Next.js 15, React 18, TypeScript |
-| **Styling** | TailwindCSS, shadcn/ui, Radix UI |
-| **Autenticação** | NextAuth.js (Google OAuth) |
-| **Backend** | Next.js API Routes |
-| **ORM** | Prisma |
-| **Banco de Dados** | PostgreSQL |
-| **Validação** | Zod |
+### Frontend
+| Tecnologia | Finalidade |
+|----------|-----------|
+| Next.js 15 | Framework React |
+| React 18 | Interface do usuário |
+| TypeScript | Tipagem estática |
+| Tailwind CSS | Estilização |
+| shadcn/ui + Radix | Componentes acessíveis |
+
+### Backend
+| Tecnologia | Finalidade |
+|----------|-----------|
+| Next.js API Routes | Backend REST |
+| NextAuth.js | Autenticação OAuth |
+| Zod | Validação de dados |
+
+### Banco de Dados
+| Tecnologia | Finalidade |
+|----------|-----------|
+| PostgreSQL | Persistência dos dados |
+| Prisma ORM | Acesso e modelagem |
 
 ---
 
-## 🏗️ Arquitetura
+## 🏗️ Arquitetura do Sistema
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         FRONTEND                             │
-│  Next.js + React + TypeScript                                │
-│  • Interface do usuário                                      │
-│  • Simulação em tempo real (cálculos locais)                │
-│  • Consumo da API                                            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      BACKEND (API REST)                      │
-│  Next.js API Routes                                          │
-│  • Autenticação via NextAuth                                │
-│  • Endpoints para CRUD de dados                             │
-│  • Validação com Zod                                        │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      BANCO DE DADOS                          │
-│  PostgreSQL + Prisma ORM                                     │
-│  • Users, FinancialData, Transactions, Investments          │
-└─────────────────────────────────────────────────────────────┘
+```text
+[ Navegador do Usuário ]
+           |
+           v
+[ Frontend (Next.js + React) ]
+           |
+           v
+[ API REST (Next.js API Routes) ]
+           |
+           v
+[ Prisma ORM ]
+           |
+           v
+[ Banco PostgreSQL ]
 ```
 
-### Por que a lógica financeira fica no Frontend?
+### 🏗️ Decisão Arquitetural
 
-Os cálculos em tempo real (ganhos por segundo) são executados no cliente por motivos de:
-- **Performance**: Atualizações a cada segundo sem latência de rede
-- **Responsividade**: UI fluida e imediata
-- **Simplicidade**: Backend focado apenas em persistência
+A lógica de **cálculo em tempo real** é executada no **frontend** para:
+
+- evitar chamadas excessivas à API  
+- garantir maior fluidez da interface  
+- reduzir latência e custo computacional no backend  
+
+O backend é responsável apenas por **autenticação, validação e persistência**.
 
 ---
 
 ## 🚀 Como Rodar Localmente
 
 ### Pré-requisitos
+- Node.js 18+  
+- PostgreSQL (local ou cloud)  
+- Conta no Google Cloud (OAuth)  
 
-- Node.js 18+
-- PostgreSQL (local ou cloud como [Neon](https://neon.tech), [Supabase](https://supabase.com))
-- Conta no [Google Cloud Console](https://console.cloud.google.com) para OAuth
+---
 
-### 1. Clone o repositório
-
+### 1️⃣ Clone o repositório
 ```bash
 git clone https://github.com/ricardaoquadros-jpg/CLTAI.git
 cd CLTAI
 ```
-
-### 2. Instale as dependências
+### 2️⃣ Instale as dependências
 
 ```bash
 npm install
 ```
 
-### 3. Configure as variáveis de ambiente
-
-Crie um arquivo `.env.local` na raiz do projeto:
-
-```env
-# PostgreSQL Connection
+### 3️⃣ Configure as variáveis de ambiente
+- Crie o arquivo .env.local na raiz do projeto:
+```bash
 DATABASE_URL="postgresql://user:password@localhost:5432/cltai?schema=public"
 
-# NextAuth Configuration
-NEXTAUTH_SECRET="gere-um-secret-com-openssl-rand-base64-32"
+NEXTAUTH_SECRET="gere-um-secret"
 NEXTAUTH_URL="http://localhost:9002"
 
-# Google OAuth (https://console.cloud.google.com/apis/credentials)
 GOOGLE_CLIENT_ID="seu-client-id"
 GOOGLE_CLIENT_SECRET="seu-client-secret"
 ```
-
-### 4. Configure o banco de dados
-
+### 4️⃣ Configure o banco de dados
 ```bash
-# Gere o cliente Prisma
 npx prisma generate
-
-# Execute as migrations
 npx prisma db push
 ```
 
-### 5. Inicie o servidor de desenvolvimento
-
+### 5️⃣ Inicie o projeto
 ```bash
 npm run dev
+Acesse: http://localhost:9002
 ```
 
-Acesse [http://localhost:9002](http://localhost:9002)
+--- 
 
----
-
-## 📁 Estrutura do Projeto
-
-```
+### 📁 Estrutura do Projeto
+```bash
 src/
-├── app/
-│   ├── api/
-│   │   ├── auth/[...nextauth]/  # NextAuth routes
-│   │   ├── me/                   # User data endpoint
-│   │   ├── transactions/         # Transactions CRUD
-│   │   └── investments/          # Investments CRUD
-│   ├── dashboard/                # Main dashboard page
-│   └── page.tsx                  # Login page
-├── components/
-│   ├── dashboard/                # Dashboard components
-│   └── ui/                       # shadcn/ui components
-├── services/
-│   └── api.ts                    # API client service
-├── lib/
-│   ├── auth.ts                   # NextAuth configuration
-│   ├── prisma.ts                 # Prisma client
-│   └── utils.ts                  # Utility functions
-└── types/                        # TypeScript types
+├─ app/
+│ ├─ api/
+│ │ ├─ auth/
+│ │ ├─ transactions/
+│ │ └─ investments/
+│ ├─ dashboard/
+│ └─ page.tsx
+├─ components/
+│ ├─ dashboard/
+│ └─ ui/
+├─ services/
+│ └─ api.ts
+├─ lib/
+│ ├─ auth.ts
+│ ├─ prisma.ts
+│ └─ utils.ts
+└─ types/
 
 prisma/
-└── schema.prisma                 # Database schema
+└─ schema.prisma
 ```
-
----
 
 ## 🔐 Segurança
 
-- **Isolamento de dados**: Cada usuário acessa apenas seus próprios dados
-- **Autorização por sessão**: Todas as rotas API verificam a sessão do usuário
-- **Validação de entrada**: Zod em todos os endpoints
-- **Variáveis de ambiente**: Credenciais sensíveis em `.env.local`
+- ✔ Autenticação via OAuth 2.0  
+- ✔ Isolamento de dados por usuário  
+- ✔ Validação de entrada com Zod  
+- ✔ Credenciais protegidas por variáveis de ambiente  
+- ✔ Sessões verificadas em todas as rotas da API  
 
 ---
 
-## 📈 Próximos Passos
+## 🚧 Próximos Passos
 
-- [ ] Testes automatizados (Jest + Testing Library)
-- [ ] Gráficos de evolução temporal
-- [ ] Metas financeiras
-- [ ] Exportação de relatórios (PDF/Excel)
-- [ ] Notificações de gastos
-- [ ] Suporte a múltiplas moedas
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT.
+- Testes automatizados  
+- Gráficos de evolução financeira  
+- Metas e alertas  
+- Exportação de relatórios (PDF / Excel)  
+- Suporte a múltiplas moedas  
 
 ---
 
-<div align="center">
-  <p>Desenvolvido por <a href="https://github.com/ricardaoquadros-jpg">Ricardo Quadros</a></p>
-</div>
+## 🧑‍💻 Autor
+
+**Ricardo Quadros**  
+- Estudante de Engenharia da Computação – UERGS  
+- Técnico em Informática – E.E.E.M. Dr. Solon Tavares  
+- Estagiário de Tecnologia da Informação – Prefeitura de Guaíba  
+- Guaíba, RS – Brasil  
+
+---
+
+## 📫 Contato
+
+- GitHub: https://github.com/ricardaoquadros-jpg  
+- Email: ricardaoquadros@gmail.com  
+- LinkedIn: https://www.linkedin.com/in/ricardopquadros/
