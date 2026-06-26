@@ -210,9 +210,9 @@ prisma/
 ## 🧑‍💻 Autor
 
 **Ricardo Quadros**  
-- Estudante de Engenharia da Computação – UERGS  
+- Tests & Qualification Analyst @ TK Elevator  
+- Ciência da Computação @ ULBRA  
 - Técnico em Informática – E.E.E.M. Dr. Solon Tavares  
-- Estagiário de Tecnologia da Informação – Prefeitura de Guaíba  
 - Guaíba, RS – Brasil  
 
 ---
